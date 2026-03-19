@@ -1,0 +1,10 @@
+{
+  "name": "Nextcloud",
+  "columns": [
+    "Backlog",
+    "To Do",
+    "In Progress",
+    "Done"
+  ],
+  "customFields": []
+}

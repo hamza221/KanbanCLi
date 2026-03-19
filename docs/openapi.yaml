@@ -1,0 +1,500 @@
+openapi: 3.1.0
+info:
+  title: CLIkanban API
+  description: |
+    REST API for CLIkanban — a CLI and web-based Kanban board manager.
+
+    The API is served by the Express production server (`server/src/index.js`)
+    and mirrored by the Vite dev middleware during development.
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development (HTTP)
+  - url: https://localhost:3000
+    description: Local development (HTTPS)
+
+paths:
+  /api/boards:
+    get:
+      operationId: listBoards
+      summary: List all boards
+      description: Returns an array of board directory names.
+      tags: [Boards]
+      responses:
+        "200":
+          description: Array of board names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: ["my-project", "sprint-1"]
+
+    post:
+      operationId: createBoard
+      summary: Create a new board
+      description: |
+        Creates a new board directory with `config.json` and an empty `cards.json`.
+        Board names must match `/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/`.
+      tags: [Boards]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBoardRequest"
+      responses:
+        "200":
+          description: Board created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  config:
+                    $ref: "#/components/schemas/BoardConfig"
+        "400":
+          description: Invalid request (missing name/columns or invalid board name)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Board already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/board:
+    get:
+      operationId: getBoard
+      summary: Get board config and cards
+      description: Returns the board configuration and all cards.
+      tags: [Board]
+      parameters:
+        - $ref: "#/components/parameters/boardName"
+      responses:
+        "200":
+          description: Board data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  config:
+                    $ref: "#/components/schemas/BoardConfig"
+                  cards:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Card"
+        "400":
+          description: Missing board name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Board not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      operationId: updateBoard
+      summary: Update board config and/or cards
+      description: |
+        Overwrites the board's `config.json` and/or `cards.json`.
+        Both fields are optional — only provided fields are written.
+      tags: [Board]
+      parameters:
+        - $ref: "#/components/parameters/boardName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                config:
+                  $ref: "#/components/schemas/BoardConfig"
+                cards:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Card"
+      responses:
+        "200":
+          description: Board updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ok"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/settings:
+    get:
+      operationId: getSettings
+      summary: Get board settings
+      description: Returns the board's settings, including the GitHub label-to-status mapping.
+      tags: [Settings]
+      parameters:
+        - $ref: "#/components/parameters/boardName"
+      responses:
+        "200":
+          description: Board settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardSettings"
+        "400":
+          description: Missing board name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      operationId: updateSettings
+      summary: Update board settings
+      description: Overwrites the board's `settings.json` with the provided object.
+      tags: [Settings]
+      parameters:
+        - $ref: "#/components/parameters/boardName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardSettings"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ok"
+        "400":
+          description: Invalid JSON
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/github-refresh:
+    post:
+      operationId: refreshGithub
+      summary: Refresh GitHub metadata for all cards
+      description: |
+        Iterates over all cards with GitHub links, fetches updated metadata
+        using the `gh` CLI, and optionally moves cards based on the board's
+        `githubStatusMap` settings.
+      tags: [GitHub]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [boardName]
+              properties:
+                boardName:
+                  type: string
+                  description: Name of the board to refresh
+                  example: my-project
+      responses:
+        "200":
+          description: Refresh completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  updated:
+                    type: integer
+                    description: Number of cards whose metadata was refreshed
+                    example: 3
+                  moved:
+                    type: integer
+                    description: Number of cards moved based on label mapping
+                    example: 1
+        "400":
+          description: Missing boardName
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Board not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Server error during refresh
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  parameters:
+    boardName:
+      name: name
+      in: query
+      required: true
+      description: Board name
+      schema:
+        type: string
+        pattern: "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+        example: my-project
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Board not found
+
+    Ok:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+
+    CreateBoardRequest:
+      type: object
+      required: [name, columns]
+      properties:
+        name:
+          type: string
+          description: Board name (must match `/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/`)
+          example: my-project
+        columns:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Column names for the board
+          example: ["To Do", "In Progress", "Done"]
+
+    BoardConfig:
+      type: object
+      required: [name, columns]
+      properties:
+        name:
+          type: string
+          example: my-project
+        columns:
+          type: array
+          items:
+            type: string
+          example: ["To Do", "In Progress", "Done"]
+        customFields:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomFieldDef"
+          default: []
+
+    CustomFieldDef:
+      type: object
+      required: [key, type]
+      properties:
+        key:
+          type: string
+          description: Unique field identifier
+          example: priority
+        label:
+          type: string
+          description: Human-readable label
+          example: Priority
+        type:
+          type: string
+          enum: [text, number, select, date, boolean]
+          example: select
+        options:
+          type: array
+          items:
+            type: string
+          description: Allowed values (only for `select` type)
+          example: ["Low", "Medium", "High"]
+        required:
+          type: boolean
+          default: false
+
+    Card:
+      type: object
+      required: [id, title, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          description: Unique card ID (nanoid, 10 chars)
+          example: "V1StGXR8_Z"
+        title:
+          type: string
+          example: Implement login page
+        status:
+          type: string
+          description: Column/status the card belongs to
+          example: In Progress
+        link:
+          type: string
+          nullable: true
+          description: URL (typically a GitHub issue/PR)
+          example: https://github.com/user/repo/issues/42
+        linkMeta:
+          $ref: "#/components/schemas/LinkMeta"
+        deadline:
+          type: string
+          nullable: true
+          description: Deadline date in YYYY-MM-DD format
+          example: "2026-04-01"
+        recurring:
+          $ref: "#/components/schemas/Recurring"
+        customFields:
+          type: object
+          additionalProperties: true
+          default: {}
+          description: Key-value pairs for custom field values
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-03-15T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-03-18T14:22:00.000Z"
+
+    LinkMeta:
+      type: object
+      nullable: true
+      description: GitHub metadata (populated by `gh` CLI)
+      properties:
+        type:
+          type: string
+          enum: [issue, pr, other]
+        owner:
+          type: string
+          example: user
+        repo:
+          type: string
+          example: repo
+        number:
+          type: integer
+          example: 42
+        title:
+          type: string
+        state:
+          type: string
+          example: OPEN
+        labels:
+          type: array
+          items:
+            $ref: "#/components/schemas/GhLabel"
+        milestone:
+          type: string
+          nullable: true
+        milestoneDueOn:
+          type: string
+          nullable: true
+          description: YYYY-MM-DD
+        assignees:
+          type: array
+          items:
+            type: string
+        author:
+          type: string
+          nullable: true
+        bodyExcerpt:
+          type: string
+          nullable: true
+          description: First 200 chars of body
+        commentsCount:
+          type: integer
+        ghCreatedAt:
+          type: string
+          nullable: true
+          format: date-time
+        ghUpdatedAt:
+          type: string
+          nullable: true
+          format: date-time
+        ghClosedAt:
+          type: string
+          nullable: true
+          format: date-time
+        fetchedAt:
+          type: string
+          nullable: true
+          format: date-time
+
+    GhLabel:
+      type: object
+      properties:
+        name:
+          type: string
+          example: bug
+        color:
+          type: string
+          nullable: true
+          description: Hex color code (without #)
+          example: "d73a4a"
+
+    Recurring:
+      type: object
+      nullable: true
+      properties:
+        frequency:
+          type: string
+          enum: [weekly]
+        lastReset:
+          type: string
+          nullable: true
+          format: date-time
+        resetToStatus:
+          type: string
+          description: Column to reset the card to on reset
+
+    BoardSettings:
+      type: object
+      properties:
+        githubStatusMap:
+          type: object
+          additionalProperties:
+            type: string
+          default: {}
+          description: |
+            Maps GitHub label names to board column names.
+            During refresh, cards with matching labels are moved to the mapped column.
+          example:
+            bug: To Do
+            in-progress: In Progress
+            done: Done
+
+tags:
+  - name: Boards
+    description: List and create boards
+  - name: Board
+    description: Get and update a specific board's config and cards
+  - name: Settings
+    description: Board settings (GitHub label-to-status mapping)
+  - name: GitHub
+    description: GitHub integration (metadata refresh)

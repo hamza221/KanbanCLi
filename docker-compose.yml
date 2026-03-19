@@ -1,0 +1,14 @@
+services:
+  clikanban:
+    build: .
+    container_name: clikanban
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - boards:/app/boards
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+
+volumes:
+  boards:

@@ -1,0 +1,5 @@
+{
+  "name": "default",
+  "columns": ["To Do", "In Progress", "Done"],
+  "customFields": []
+}

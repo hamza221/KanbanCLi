@@ -1,0 +1,194 @@
+[
+  {
+    "id": "TVlxWa6Xsf",
+    "title": "fdf",
+    "status": "Backlog",
+    "link": null,
+    "linkMeta": null,
+    "deadline": null,
+    "recurring": null,
+    "customFields": {},
+    "createdAt": "2026-03-19T13:54:36.576Z",
+    "updatedAt": "2026-03-19T13:54:36.576Z"
+  },
+  {
+    "id": "7kjVAKg8kJ",
+    "title": "Test",
+    "status": "To Do",
+    "link": "https://github.com/nextcloud/calendar/issues/2706",
+    "linkMeta": {
+      "type": "issue",
+      "owner": "nextcloud",
+      "repo": "calendar",
+      "number": 2706,
+      "title": "Calendar delegation",
+      "state": "OPEN",
+      "labels": [
+        {
+          "name": "1. to develop",
+          "color": "0052cc"
+        },
+        {
+          "name": "design",
+          "color": "cc317c"
+        },
+        {
+          "name": "enhancement",
+          "color": "0e8a16"
+        },
+        {
+          "name": "Feature: Sharing",
+          "color": "4567D3"
+        },
+        {
+          "name": "design: brainstorming 🧠",
+          "color": "cc317c"
+        },
+        {
+          "name": "design: interview 🎤",
+          "color": "cc317c"
+        }
+      ],
+      "milestone": null,
+      "milestoneDueOn": null,
+      "assignees": [
+        "hamza221",
+        "GVodyanov",
+        "kra-mo"
+      ],
+      "author": "ksteinb",
+      "bodyExcerpt": "## Use case\n\nAs a Nextcloud Calendar user, I want to delegate my calendar(s) to another Nextcloud user, so that they can act on my behalf. This would be used by assistants, vacation replacements, and ",
+      "commentsCount": 8,
+      "ghCreatedAt": "2020-11-17T16:24:28Z",
+      "ghUpdatedAt": "2026-03-18T06:16:22Z",
+      "ghClosedAt": null,
+      "fetchedAt": "2026-03-19T15:37:08.866Z"
+    },
+    "deadline": null,
+    "recurring": null,
+    "customFields": {},
+    "createdAt": "2026-03-19T13:58:54.493Z",
+    "updatedAt": "2026-03-19T13:58:54.493Z"
+  },
+  {
+    "id": "JvhX5iwzAK",
+    "title": "gg",
+    "status": "Backlog",
+    "link": null,
+    "linkMeta": null,
+    "deadline": null,
+    "recurring": null,
+    "customFields": {},
+    "createdAt": "2026-03-19T14:25:29.077Z",
+    "updatedAt": "2026-03-19T14:25:29.077Z"
+  },
+  {
+    "id": "Uzo2GQeifQ",
+    "title": "fdf",
+    "status": "To Do",
+    "link": "https://github.com/nextcloud/calendar/issues/2706",
+    "linkMeta": {
+      "type": "issue",
+      "owner": "nextcloud",
+      "repo": "calendar",
+      "number": 2706,
+      "title": "Calendar delegation",
+      "state": "OPEN",
+      "labels": [
+        {
+          "name": "1. to develop",
+          "color": "0052cc"
+        },
+        {
+          "name": "design",
+          "color": "cc317c"
+        },
+        {
+          "name": "enhancement",
+          "color": "0e8a16"
+        },
+        {
+          "name": "Feature: Sharing",
+          "color": "4567D3"
+        },
+        {
+          "name": "design: brainstorming 🧠",
+          "color": "cc317c"
+        },
+        {
+          "name": "design: interview 🎤",
+          "color": "cc317c"
+        }
+      ],
+      "milestone": null,
+      "milestoneDueOn": null,
+      "assignees": [
+        "hamza221",
+        "GVodyanov",
+        "kra-mo"
+      ],
+      "author": "ksteinb",
+      "bodyExcerpt": "## Use case\n\nAs a Nextcloud Calendar user, I want to delegate my calendar(s) to another Nextcloud user, so that they can act on my behalf. This would be used by assistants, vacation replacements, and ",
+      "commentsCount": 8,
+      "ghCreatedAt": "2020-11-17T16:24:28Z",
+      "ghUpdatedAt": "2026-03-18T06:16:22Z",
+      "ghClosedAt": null,
+      "fetchedAt": "2026-03-19T15:37:10.273Z"
+    },
+    "deadline": null,
+    "recurring": null,
+    "customFields": {},
+    "createdAt": "2026-03-19T14:27:30.310Z",
+    "updatedAt": "2026-03-19T14:27:30.310Z"
+  },
+  {
+    "id": "I9Url2ucoJ",
+    "title": "Show attachments in thread list",
+    "status": "In Progress",
+    "link": "https://github.com/nextcloud/mail/issues/11065",
+    "linkMeta": {
+      "type": "issue",
+      "owner": "nextcloud",
+      "repo": "mail",
+      "number": 11065,
+      "title": "Show attachments in thread list",
+      "state": "OPEN",
+      "labels": [
+        {
+          "name": "enhancement",
+          "color": "0e8a16"
+        },
+        {
+          "name": "2. developing",
+          "color": "0052cc"
+        },
+        {
+          "name": "design",
+          "color": "cc317c"
+        },
+        {
+          "name": "design: gap analysis 🕳️",
+          "color": "cc317c"
+        }
+      ],
+      "milestone": null,
+      "milestoneDueOn": null,
+      "assignees": [
+        "hamza221",
+        "nimishavijay"
+      ],
+      "author": "ChristophWurst",
+      "bodyExcerpt": "### Is your feature request related to a problem? Please describe.\n\nAs a Nextcloud Mail user I want to quickly open the (single) attachment of an email. E.g. see the attached PDF for an invoice.\n\n### ",
+      "commentsCount": 3,
+      "ghCreatedAt": "2025-05-05T07:32:56Z",
+      "ghUpdatedAt": "2026-01-20T11:47:22Z",
+      "ghClosedAt": null,
+      "fetchedAt": "2026-03-19T15:37:11.772Z"
+    },
+    "deadline": null,
+    "recurring": null,
+    "customFields": {},
+    "createdAt": "2026-03-19T15:24:33.045Z",
+    "updatedAt": "2026-03-19T15:24:33.045Z"
+  }
+]
