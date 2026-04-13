@@ -10,7 +10,7 @@
     "test": "vitest run --project cli"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.3.2",
+    "@inquirer/prompts": "^8.4.1",
     "chalk": "^5.4.0",
     "commander": "^13.0.0",
     "date-fns": "^4.1.0",
