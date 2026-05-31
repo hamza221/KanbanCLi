@@ -29,15 +29,18 @@ export function registerRecurringCommand(program) {
 
       const config = await readConfig(boardName);
       const cards = await readCards(boardName);
+
+      // Snapshot lastReset values so we can count only the cards actually reset
+      const beforeReset = cards.map((c) => c.recurring?.lastReset ?? null);
       const modified = processRecurring(cards, config);
 
       if (modified) {
         await writeCards(boardName, cards);
-        const resetCards = cards.filter(
-          (c) => c.recurring?.frequency === 'weekly'
-        );
+        const resetCount = cards.filter(
+          (c, i) => c.recurring && (c.recurring.lastReset ?? null) !== beforeReset[i]
+        ).length;
         console.log(
-          chalk.green(`Reset ${resetCards.length} recurring card(s) on "${boardName}".`)
+          chalk.green(`Reset ${resetCount} recurring card(s) on "${boardName}".`)
         );
       } else {
         console.log(chalk.yellow('No recurring cards needed resetting.'));

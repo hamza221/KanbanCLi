@@ -31,6 +31,15 @@ const BOARDS_DIR = path.resolve(PROJECT_ROOT, 'boards');
 const DIST_DIR = path.resolve(PROJECT_ROOT, 'web', 'dist');
 const BOARD_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 
+/**
+ * Resolve a board directory from an untrusted name, guarding against path
+ * traversal (e.g. `../../etc`). Returns null if the name is invalid.
+ */
+function resolveBoardDir(boardsDir, name) {
+  if (typeof name !== 'string' || !BOARD_NAME_RE.test(name)) return null;
+  return path.resolve(boardsDir, name);
+}
+
 // --- GitHub helpers (mirrors vite.config.js) ---
 
 function parseGhUrl(url) {
@@ -144,7 +153,7 @@ export function createApp(boardsDir = BOARDS_DIR) {
         fs.writeFileSync(path.resolve(newBoardDir, 'config.json'), JSON.stringify(config, null, 2) + '\n');
         fs.writeFileSync(path.resolve(newBoardDir, 'cards.json'), '[]\n');
         res.json({ ok: true, config });
-      } catch (err) {
+      } catch {
         res.status(400).json({ error: 'Invalid request' });
       }
     });
@@ -157,7 +166,10 @@ export function createApp(boardsDir = BOARDS_DIR) {
       if (!boardName) {
         return res.status(400).json({ error: 'Missing board name' });
       }
-      const boardDir = path.resolve(boardsDir, boardName);
+      const boardDir = resolveBoardDir(boardsDir, boardName);
+      if (!boardDir) {
+        return res.status(400).json({ error: 'Invalid board name' });
+      }
       try {
         const config = JSON.parse(fs.readFileSync(path.resolve(boardDir, 'config.json'), 'utf-8'));
         const cards = JSON.parse(fs.readFileSync(path.resolve(boardDir, 'cards.json'), 'utf-8'));
@@ -171,7 +183,10 @@ export function createApp(boardsDir = BOARDS_DIR) {
       if (!boardName) {
         return res.status(400).json({ error: 'Missing board name' });
       }
-      const boardDir = path.resolve(boardsDir, boardName);
+      const boardDir = resolveBoardDir(boardsDir, boardName);
+      if (!boardDir) {
+        return res.status(400).json({ error: 'Invalid board name' });
+      }
       try {
         const data = req.body;
         if (data.config) {
@@ -200,7 +215,10 @@ export function createApp(boardsDir = BOARDS_DIR) {
       if (!boardName) {
         return res.status(400).json({ error: 'Missing board name' });
       }
-      const boardDir = path.resolve(boardsDir, boardName);
+      const boardDir = resolveBoardDir(boardsDir, boardName);
+      if (!boardDir) {
+        return res.status(400).json({ error: 'Invalid board name' });
+      }
       const settingsFile = path.resolve(boardDir, 'settings.json');
       try {
         if (fs.existsSync(settingsFile)) {
@@ -218,7 +236,10 @@ export function createApp(boardsDir = BOARDS_DIR) {
       if (!boardName) {
         return res.status(400).json({ error: 'Missing board name' });
       }
-      const boardDir = path.resolve(boardsDir, boardName);
+      const boardDir = resolveBoardDir(boardsDir, boardName);
+      if (!boardDir) {
+        return res.status(400).json({ error: 'Invalid board name' });
+      }
       const settingsFile = path.resolve(boardDir, 'settings.json');
       try {
         const settings = req.body;
@@ -237,7 +258,10 @@ export function createApp(boardsDir = BOARDS_DIR) {
         return res.status(400).json({ error: 'Missing boardName' });
       }
 
-      const boardDir = path.resolve(boardsDir, boardName);
+      const boardDir = resolveBoardDir(boardsDir, boardName);
+      if (!boardDir) {
+        return res.status(400).json({ error: 'Invalid boardName' });
+      }
       const cardsPath = path.resolve(boardDir, 'cards.json');
       if (!fs.existsSync(cardsPath)) {
         return res.status(404).json({ error: 'Board not found' });

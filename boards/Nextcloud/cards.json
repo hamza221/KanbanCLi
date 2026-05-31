@@ -25,7 +25,7 @@
       "state": "OPEN",
       "labels": [
         {
-          "name": "1. to develop",
+          "name": "2. developing",
           "color": "0052cc"
         },
         {
@@ -60,9 +60,9 @@
       "bodyExcerpt": "## Use case\n\nAs a Nextcloud Calendar user, I want to delegate my calendar(s) to another Nextcloud user, so that they can act on my behalf. This would be used by assistants, vacation replacements, and ",
       "commentsCount": 8,
       "ghCreatedAt": "2020-11-17T16:24:28Z",
-      "ghUpdatedAt": "2026-03-18T06:16:22Z",
+      "ghUpdatedAt": "2026-05-28T11:40:14Z",
       "ghClosedAt": null,
-      "fetchedAt": "2026-03-19T15:37:08.866Z"
+      "fetchedAt": "2026-05-31T15:30:25.614Z"
     },
     "deadline": null,
     "recurring": null,
@@ -96,7 +96,7 @@
       "state": "OPEN",
       "labels": [
         {
-          "name": "1. to develop",
+          "name": "2. developing",
           "color": "0052cc"
         },
         {
@@ -131,9 +131,9 @@
       "bodyExcerpt": "## Use case\n\nAs a Nextcloud Calendar user, I want to delegate my calendar(s) to another Nextcloud user, so that they can act on my behalf. This would be used by assistants, vacation replacements, and ",
       "commentsCount": 8,
       "ghCreatedAt": "2020-11-17T16:24:28Z",
-      "ghUpdatedAt": "2026-03-18T06:16:22Z",
+      "ghUpdatedAt": "2026-05-28T11:40:14Z",
       "ghClosedAt": null,
-      "fetchedAt": "2026-03-19T15:37:10.273Z"
+      "fetchedAt": "2026-05-31T15:30:26.486Z"
     },
     "deadline": null,
     "recurring": null,
@@ -183,7 +183,7 @@
       "ghCreatedAt": "2025-05-05T07:32:56Z",
       "ghUpdatedAt": "2026-01-20T11:47:22Z",
       "ghClosedAt": null,
-      "fetchedAt": "2026-03-19T15:37:11.772Z"
+      "fetchedAt": "2026-05-31T15:30:27.404Z"
     },
     "deadline": null,
     "recurring": null,

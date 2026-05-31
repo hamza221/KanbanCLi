@@ -135,7 +135,7 @@ Examples:
         const m = cardItem.linkMeta;
         console.log(`${chalk.dim('GitHub:')}   ${m.owner}/${m.repo}#${m.number} (${m.state || 'unknown'})`);
         if (m.labels?.length) {
-          console.log(`${chalk.dim('Labels:')}   ${m.labels.join(', ')}`);
+          console.log(`${chalk.dim('Labels:')}   ${m.labels.map((l) => l.name).join(', ')}`);
         }
         if (m.milestone) {
           console.log(`${chalk.dim('Milestone:')} ${m.milestone}`);
