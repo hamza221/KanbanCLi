@@ -1,59 +1,61 @@
 <template>
-  <Card class="kanban-card">
-    <template #content>
-      <div class="kanban-card-header">
-        <div class="kanban-card-title">{{ card.title }}</div>
-        <div class="kanban-card-actions">
-          <Button
-            icon="pi pi-pencil"
-            severity="secondary"
-            variant="text"
-            size="small"
-            rounded
-            v-tooltip.top="'Edit'"
-            @click="$emit('edit', card)"
-          />
-          <Button
-            icon="pi pi-trash"
-            severity="danger"
-            variant="text"
-            size="small"
-            rounded
-            v-tooltip.top="'Delete'"
-            @click="$emit('delete', card)"
-          />
-        </div>
-      </div>
+  <article class="kanban-card" tabindex="0">
+    <div
+      v-if="card.linkMeta?.labels?.length"
+      class="kanban-card-labels"
+    >
+      <Tag
+        v-for="label in card.linkMeta.labels"
+        :key="label.name"
+        :value="label.name"
+        rounded
+        :style="labelStyle(label.color)"
+      />
+    </div>
 
-      <GithubLink v-if="card.link" :link="card.link" :meta="card.linkMeta" />
-
-      <!-- GitHub labels as colored chips -->
-      <div
-        v-if="card.linkMeta?.labels?.length"
-        class="kanban-card-labels"
-      >
-        <Tag
-          v-for="label in card.linkMeta.labels"
-          :key="label.name"
-          :value="label.name"
+    <div class="kanban-card-header">
+      <h3 class="kanban-card-title">{{ card.title }}</h3>
+      <div class="kanban-card-actions">
+        <Button
+          icon="pi pi-pencil"
+          severity="secondary"
+          variant="text"
+          size="small"
           rounded
-          :style="labelStyle(label.color)"
+          v-tooltip.top="'Edit'"
+          @click.stop="$emit('edit', card)"
+        />
+        <Button
+          icon="pi pi-trash"
+          severity="danger"
+          variant="text"
+          size="small"
+          rounded
+          v-tooltip.top="'Delete'"
+          @click.stop="$emit('delete', card)"
         />
       </div>
+    </div>
 
-      <!-- GitHub metadata row (author, assignees, comments) -->
-      <div v-if="hasGhMeta" class="kanban-card-gh-meta">
-        <span v-if="card.linkMeta.author" class="gh-meta-item" v-tooltip.top="'Author'">
-          <i class="pi pi-user"></i> {{ card.linkMeta.author }}
-        </span>
-        <span v-if="card.linkMeta.assignees?.length" class="gh-meta-item" v-tooltip.top="'Assignees'">
-          <i class="pi pi-users"></i> {{ card.linkMeta.assignees.join(', ') }}
-        </span>
-        <span v-if="card.linkMeta.commentsCount > 0" class="gh-meta-item" v-tooltip.top="'Comments'">
-          <i class="pi pi-comments"></i> {{ card.linkMeta.commentsCount }}
-        </span>
-      </div>
+    <GithubLink v-if="card.link" :link="card.link" :meta="card.linkMeta" />
 
+    <div v-if="hasGhMeta" class="kanban-card-gh-meta">
+      <span v-if="card.linkMeta.author" class="gh-meta-item" v-tooltip.top="'Author'">
+        <i class="pi pi-user"></i> {{ card.linkMeta.author }}
+      </span>
+      <span v-if="card.linkMeta.assignees?.length" class="gh-meta-item" v-tooltip.top="'Assignees'">
+        <i class="pi pi-users"></i> {{ card.linkMeta.assignees.join(', ') }}
+      </span>
+      <span v-if="card.linkMeta.commentsCount > 0" class="gh-meta-item" v-tooltip.top="'Comments'">
+        <i class="pi pi-comments"></i> {{ card.linkMeta.commentsCount }}
+      </span>
+    </div>
+
+    <div class="kanban-card-bottom">
+      <span class="kanban-card-id">
+        <i class="pi pi-chart-bar"></i>
+        {{ card.id }}
+      </span>
       <div class="kanban-card-meta">
         <DeadlineTag v-if="card.deadline" :deadline="card.deadline" />
 
@@ -71,13 +73,12 @@
           :schema="config.customFields"
         />
       </div>
-    </template>
-  </Card>
+    </div>
+  </article>
 </template>
 
 <script setup>
 import { computed } from 'vue';
-import Card from 'primevue/card';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
 import GithubLink from './GithubLink.vue';
@@ -103,15 +104,12 @@ const hasGhMeta = computed(() => {
 function labelStyle(color) {
   if (!color) return {};
   const hex = color.startsWith('#') ? color : `#${color}`;
-  // Compute perceived luminance to pick black or white text
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  const textColor = luminance > 0.5 ? '#000000' : '#ffffff';
   return {
-    backgroundColor: hex,
-    color: textColor,
+    backgroundColor: `rgba(${r}, ${g}, ${b}, 0.12)`,
+    color: hex,
     border: 'none',
   };
 }

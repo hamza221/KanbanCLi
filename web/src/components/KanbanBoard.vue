@@ -1,9 +1,10 @@
 <template>
   <div class="kanban-board">
     <KanbanColumn
-      v-for="column in config.columns"
+      v-for="(column, index) in config.columns"
       :key="column"
       :name="column"
+      :index="index"
       :cards="cardsByColumn(column)"
       :config="config"
       @update:cards="(updated) => onColumnUpdate(column, updated)"

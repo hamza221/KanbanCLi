@@ -9,47 +9,47 @@ import 'primeicons/primeicons.css';
 import App from './App.vue';
 import './assets/styles.css';
 
-// Custom palette: #880d1e, #dd2d4a, #f26a8d, #f49cbb, #cbeef3
+// Design palette adapted from the board mock.
 const CLIkanbanPreset = definePreset(Aura, {
   semantic: {
     primary: {
-      50: '#fef1f3',
-      100: '#fde6ea',
-      200: '#f9b8c5',
-      300: '#f49cbb',
-      400: '#f26a8d',
-      500: '#dd2d4a',
-      600: '#c42843',
-      700: '#a1213a',
-      800: '#880d1e',
-      900: '#6b0a18',
-      950: '#4a0711',
+      50: '#f2f3ff',
+      100: '#e8eaff',
+      200: '#d6d9ff',
+      300: '#b8bef8',
+      400: '#8d96ea',
+      500: '#5e6ad2',
+      600: '#515abb',
+      700: '#434a9a',
+      800: '#383e7d',
+      900: '#303565',
+      950: '#1f2242',
     },
     colorScheme: {
       light: {
         primary: {
-          color: '#dd2d4a',
+          color: '#5e6ad2',
           contrastColor: '#ffffff',
-          hoverColor: '#c42843',
-          activeColor: '#a1213a',
+          hoverColor: '#515abb',
+          activeColor: '#434a9a',
         },
         highlight: {
-          background: '#fef1f3',
-          focusBackground: '#fde6ea',
-          color: '#880d1e',
-          focusColor: '#880d1e',
+          background: '#f2f3ff',
+          focusBackground: '#e8eaff',
+          color: '#303565',
+          focusColor: '#303565',
         },
       },
       dark: {
         primary: {
-          color: '#f26a8d',
-          contrastColor: '#1a1a2e',
-          hoverColor: '#f49cbb',
-          activeColor: '#dd2d4a',
+          color: '#8d96ea',
+          contrastColor: '#ffffff',
+          hoverColor: '#b8bef8',
+          activeColor: '#5e6ad2',
         },
         highlight: {
-          background: 'rgba(242, 106, 141, 0.16)',
-          focusBackground: 'rgba(242, 106, 141, 0.24)',
+          background: 'rgba(94, 106, 210, 0.16)',
+          focusBackground: 'rgba(94, 106, 210, 0.24)',
           color: 'rgba(255,255,255,.87)',
           focusColor: 'rgba(255,255,255,.87)',
         },

@@ -2,91 +2,150 @@
   <div class="kanban-app">
     <Toast />
     <ConfirmDialog />
-    <Toolbar class="kanban-toolbar">
-      <template #start>
-        <h1 class="kanban-title">CLIkanban</h1>
-      </template>
-      <template #center>
-        <div class="kanban-toolbar-center">
+
+    <aside class="kanban-sidebar" aria-label="Board controls">
+      <div class="kanban-workspace">
+        <span class="kanban-workspace-mark">
+          <i class="pi pi-th-large"></i>
+        </span>
+        <div>
+          <h1 class="kanban-title">CLIkanban</h1>
+          <p class="kanban-subtitle">Local boards</p>
+        </div>
+      </div>
+
+      <div class="kanban-sidebar-section">
+        <span class="kanban-sidebar-label">Board</span>
+        <div class="kanban-board-select-wrap">
           <BoardSelector
             :boards="boards"
             :activeBoard="activeBoard"
             @select="onBoardSelect"
           />
-          <Button
-            icon="pi pi-plus-circle"
-            label="New Board"
-            severity="secondary"
-            size="small"
-            outlined
-            @click="showCreateBoard = true"
-          />
         </div>
-      </template>
-      <template #end>
         <Button
-          icon="pi pi-cog"
+          icon="pi pi-plus"
+          label="New Board"
           severity="secondary"
-          variant="text"
           size="small"
-          rounded
-          v-tooltip.bottom="'Settings'"
-          :disabled="!boardData"
-          @click="showSettings = true"
+          outlined
+          class="kanban-sidebar-action"
+          @click="showCreateBoard = true"
         />
+      </div>
+
+      <div class="kanban-sidebar-section">
+        <span class="kanban-sidebar-label">Status</span>
+        <div class="kanban-sidebar-stat">
+          <span class="kanban-stat-dot"></span>
+          <span>{{ boardData ? `${boardData.cards.length} cards` : 'No board selected' }}</span>
+        </div>
+        <div class="kanban-sidebar-stat">
+          <span class="kanban-stat-dot muted"></span>
+          <span>{{ boardData ? `${boardData.config.columns.length} columns` : 'Create or select a board' }}</span>
+        </div>
+      </div>
+
+      <div class="kanban-sidebar-footer">
         <Button
           :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'"
+          :label="isDark ? 'Light mode' : 'Dark mode'"
           severity="secondary"
           variant="text"
           size="small"
-          rounded
-          v-tooltip.bottom="isDark ? 'Light mode' : 'Dark mode'"
+          class="kanban-sidebar-action"
           @click="toggleDark"
         />
         <Button
-          icon="pi pi-plus"
-          label="Add Card"
+          icon="pi pi-cog"
+          label="Settings"
+          severity="secondary"
+          variant="text"
           size="small"
+          class="kanban-sidebar-action"
           :disabled="!boardData"
-          @click="showAddCard = true"
+          @click="showSettings = true"
         />
-      </template>
-    </Toolbar>
+      </div>
+    </aside>
 
-    <div v-if="loading" class="kanban-loading">
-      <ProgressSpinner />
-    </div>
+    <main class="kanban-main">
+      <header class="kanban-topbar">
+        <div class="kanban-crumb">
+          <i class="pi pi-table"></i>
+          <strong>{{ activeBoard || 'No board' }}</strong>
+          <span>/</span>
+          <span>{{ boardData ? 'Board' : 'Select board' }}</span>
+        </div>
+        <div class="kanban-topbar-actions">
+          <div class="kanban-view-toggle" aria-label="Current view">
+            <span class="active"><i class="pi pi-th-large"></i> Board</span>
+          </div>
+          <Button
+            icon="pi pi-plus"
+            label="Add Card"
+            size="small"
+            :disabled="!boardData"
+            @click="showAddCard = true"
+          />
+        </div>
+      </header>
 
-    <KanbanBoard
-      v-else-if="boardData && boardData.cards.length > 0"
-      :config="boardData.config"
-      :cards="boardData.cards"
-      @update:cards="onCardsUpdate"
-      @edit-card="onEditCard"
-      @delete-card="onDeleteCard"
-    />
+      <div class="kanban-filterbar">
+        <span class="kanban-filter-chip">
+          <i class="pi pi-filter"></i>
+          Status
+          <strong>{{ boardData ? 'All' : '-' }}</strong>
+        </span>
+        <span class="kanban-filter-chip">
+          <i class="pi pi-columns"></i>
+          Columns
+          <strong>{{ boardData?.config.columns.length || 0 }}</strong>
+        </span>
+        <span class="kanban-live-pill">
+          <span class="kanban-live-dot"></span>
+          <strong>{{ boardData?.cards.length || 0 }}</strong>
+          cards
+        </span>
+      </div>
 
-    <div v-else-if="boardData && boardData.cards.length === 0" class="kanban-empty-board">
-      <i class="pi pi-inbox kanban-empty-icon"></i>
-      <h2>No cards yet</h2>
-      <p>Get started by adding your first card.</p>
-      <Button
-        icon="pi pi-plus"
-        label="Add Card"
-        @click="showAddCard = true"
-      />
-    </div>
+      <section class="kanban-content">
+        <div v-if="loading" class="kanban-loading">
+          <ProgressSpinner />
+        </div>
 
-    <div v-else class="kanban-empty">
-      <i class="pi pi-th-large kanban-empty-icon"></i>
-      <h2>No board selected</h2>
-      <p>Create a board to get started:</p>
-      <Button
-        icon="pi pi-plus-circle"
-        label="New Board"
-        @click="showCreateBoard = true"
-      />
-    </div>
+        <KanbanBoard
+          v-else-if="boardData && boardData.cards.length > 0"
+          :config="boardData.config"
+          :cards="boardData.cards"
+          @update:cards="onCardsUpdate"
+          @edit-card="onEditCard"
+          @delete-card="onDeleteCard"
+        />
+
+        <div v-else-if="boardData && boardData.cards.length === 0" class="kanban-empty-board">
+          <i class="pi pi-inbox kanban-empty-icon"></i>
+          <h2>No cards yet</h2>
+          <p>Get started by adding your first card.</p>
+          <Button
+            icon="pi pi-plus"
+            label="Add Card"
+            @click="showAddCard = true"
+          />
+        </div>
+
+        <div v-else class="kanban-empty">
+          <i class="pi pi-th-large kanban-empty-icon"></i>
+          <h2>No board selected</h2>
+          <p>Create a board to get started.</p>
+          <Button
+            icon="pi pi-plus"
+            label="New Board"
+            @click="showCreateBoard = true"
+          />
+        </div>
+      </section>
+    </main>
 
     <CardDialog
       v-if="boardData"
@@ -120,7 +179,6 @@ import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
-import Toolbar from 'primevue/toolbar';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import BoardSelector from './components/BoardSelector.vue';

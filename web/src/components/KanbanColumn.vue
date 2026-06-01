@@ -1,7 +1,16 @@
 <template>
   <div class="kanban-column" :data-status="name">
     <div class="kanban-column-header">
-      <span>{{ name }}</span>
+      <div class="kanban-column-title">
+        <span
+          class="kanban-column-dot"
+          :class="{ 'is-done': isDoneColumn, 'is-hollow': index === 0 && !isDoneColumn }"
+          :style="{ '--column-color': columnColor }"
+        >
+          <i v-if="isDoneColumn" class="pi pi-check"></i>
+        </span>
+        <span>{{ name }}</span>
+      </div>
       <span class="kanban-column-count">{{ cards.length }}</span>
     </div>
     <div class="kanban-column-cards">
@@ -26,12 +35,13 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Sortable } from 'sortablejs-vue3';
 import KanbanCard from './KanbanCard.vue';
 
 const props = defineProps({
   name: { type: String, required: true },
+  index: { type: Number, default: 0 },
   cards: { type: Array, required: true },
   config: { type: Object, required: true },
 });
@@ -54,6 +64,17 @@ const sortableOptions = {
   ghostClass: 'ghost-card',
   dragClass: 'sortable-drag',
 };
+
+const columnColors = ['#8a8f98', '#9aa0aa', '#e0a526', '#7a5af5', '#3fa663'];
+
+const isDoneColumn = computed(() => {
+  return /done|complete|closed/i.test(props.name);
+});
+
+const columnColor = computed(() => {
+  if (isDoneColumn.value) return '#3fa663';
+  return columnColors[props.index % columnColors.length];
+});
 
 function onDragEnd(event) {
   const { to } = event;
