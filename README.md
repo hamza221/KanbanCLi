@@ -90,6 +90,7 @@ kanban board delete my-project             # Delete board and cards
 kanban card list my-project                # List cards grouped by column
 kanban card list my-project -s "In Progress"
 kanban card add my-project "Fix login bug" -s "To Do" -d 2026-04-01
+kanban card add my-project -l https://github.com/user/repo/issues/42  # Title filled by sync
 kanban card show my-project <cardId>
 kanban card edit my-project <cardId> -t "New title" -s "Done"
 kanban card remove my-project <cardId>

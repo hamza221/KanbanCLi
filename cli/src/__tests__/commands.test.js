@@ -124,6 +124,27 @@ describe('CLI commands (integration)', () => {
       expect(cards[0].link).toBe('https://example.com');
     });
 
+    it('adds a GitHub-linked card without a title', async () => {
+      await runCLI(
+        'card', 'add', TEST_BOARD,
+        '-l', 'https://github.com/acme/repo/issues/42'
+      );
+
+      const cards = await readCards(TEST_BOARD);
+      expect(cards[0].title).toBe('');
+      expect(cards[0].link).toBe('https://github.com/acme/repo/issues/42');
+    });
+
+    it('rejects a card without a title when the link is not a GitHub issue or PR', async () => {
+      const { errors, exitCode } = await runCLI(
+        'card', 'add', TEST_BOARD,
+        '-l', 'https://example.com/task'
+      );
+
+      expect(errors.some((e) => e.includes('GitHub issue or PR link'))).toBe(true);
+      expect(exitCode).toBe(1);
+    });
+
     it('rejects add with invalid status', async () => {
       const { errors, exitCode } = await runCLI(
         'card', 'add', TEST_BOARD, 'Bad', '-s', 'InvalidCol'

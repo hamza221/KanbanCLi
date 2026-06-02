@@ -14,7 +14,7 @@
     </div>
 
     <div class="kanban-card-header">
-      <h3 class="kanban-card-title">{{ card.title }}</h3>
+      <h3 class="kanban-card-title">{{ displayTitle }}</h3>
       <div class="kanban-card-actions">
         <Button
           icon="pi pi-pencil"
@@ -97,6 +97,13 @@ const hasGhMeta = computed(() => {
   return m && (m.author || m.assignees?.length || m.commentsCount > 0);
 });
 
+const displayTitle = computed(() => {
+  const title = props.card.title?.trim();
+  if (title) return title;
+  if (props.card.linkMeta?.title) return props.card.linkMeta.title;
+  return githubIssueLabel(props.card.link) || 'Untitled card';
+});
+
 /**
  * Compute inline style for a GitHub label chip.
  * Uses the label color as background with contrasting text.
@@ -112,6 +119,21 @@ function labelStyle(color) {
     color: hex,
     border: 'none',
   };
+}
+
+function githubIssueLabel(link) {
+  if (!link) return null;
+  try {
+    const url = new URL(link.startsWith('http') ? link : `https://${link}`);
+    if (url.hostname !== 'github.com') return null;
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (parts.length >= 4 && (parts[2] === 'issues' || parts[2] === 'pull')) {
+      return `${parts[0]}/${parts[1]}#${parts[3]}`;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 </script>
 

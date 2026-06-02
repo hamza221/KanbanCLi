@@ -207,12 +207,14 @@ describe('database-backed account API', () => {
       'POST',
       `/api/account/boards/${board.body.id}/cards`,
       {
-        title: 'Pull issue data',
+        title: '',
         status: 'To Do',
         link: 'https://github.com/example/repo/issues/1',
       },
       signup.sessionCookie
     );
+    expect(card.status).toBe(201);
+    expect(card.body.title).toBe('');
 
     await request(
       app,
@@ -258,16 +260,18 @@ describe('database-backed account API', () => {
     expect(refresh.body.moved).toBe(1);
     expect(refresh.body.failed).toBe(0);
     expect(refresh.body.board.cards[0].id).toBe(card.body.id);
+    expect(refresh.body.board.cards[0].title).toBe('Issue title from GitHub');
     expect(refresh.body.board.cards[0].status).toBe('Done');
     expect(refresh.body.board.cards[0].linkMeta.title).toBe('Issue title from GitHub');
     expect(refresh.body.board.cards[0].linkMeta.labels[0]).toEqual({ name: 'done', color: '2da44e' });
 
     const dbCard = app.locals.db.prepare(`
-      SELECT link_meta AS linkMeta, board_columns.name AS status
+      SELECT cards.title, link_meta AS linkMeta, board_columns.name AS status
       FROM cards
       JOIN board_columns ON board_columns.id = cards.column_id
       WHERE cards.id = ?
     `).get(card.body.id);
+    expect(dbCard.title).toBe('Issue title from GitHub');
     expect(JSON.parse(dbCard.linkMeta).repo).toBe('repo');
     expect(dbCard.status).toBe('Done');
   });

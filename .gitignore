@@ -6,3 +6,4 @@ design
 data/*.db
 data/*.db-shm
 data/*.db-wal
+web/dist

@@ -14,10 +14,10 @@
           v-model="form.title"
           placeholder="Card title"
           fluid
-          :invalid="submitted && !form.title.trim()"
+          :invalid="submitted && !canSave"
         />
-        <small v-if="submitted && !form.title.trim()" class="p-error">
-          Title is required
+        <small v-if="submitted && !canSave" class="p-error">
+          Add a title or a GitHub issue/PR link
         </small>
       </div>
 
@@ -146,6 +146,8 @@ const emit = defineEmits(['hide', 'save']);
 const submitted = ref(false);
 
 const isEditing = computed(() => !!props.card);
+const hasGithubCardLink = computed(() => isGithubIssueOrPrLink(form.link));
+const canSave = computed(() => !!form.title.trim() || hasGithubCardLink.value);
 
 const form = reactive({
   title: '',
@@ -182,9 +184,10 @@ watch(
 
 function onSave() {
   submitted.value = true;
-  if (!form.title.trim()) return;
+  if (!canSave.value) return;
 
   const now = new Date().toISOString();
+  const link = form.link.trim() || null;
 
   if (isEditing.value) {
     // Update existing card
@@ -192,7 +195,7 @@ function onSave() {
       ...props.card,
       title: form.title.trim(),
       status: form.status,
-      link: form.link || null,
+      link,
       deadline: form.deadlineDate ? format(form.deadlineDate, 'yyyy-MM-dd') : null,
       recurring: form.isRecurring
         ? props.card.recurring || {
@@ -211,7 +214,7 @@ function onSave() {
       id: nanoid(10),
       title: form.title.trim(),
       status: form.status,
-      link: form.link || null,
+      link,
       linkMeta: null,
       deadline: form.deadlineDate ? format(form.deadlineDate, 'yyyy-MM-dd') : null,
       recurring: form.isRecurring
@@ -227,6 +230,12 @@ function onSave() {
     };
     emit('save', card);
   }
+}
+
+function isGithubIssueOrPrLink(link) {
+  if (!link) return false;
+  const cleaned = link.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+  return /^github\.com\/[^/]+\/[^/]+\/(issues|pull)\/\d+/.test(cleaned);
 }
 </script>
 

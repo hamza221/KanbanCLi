@@ -315,6 +315,7 @@ export function createApp(boardsDir = BOARDS_DIR, options = {}) {
           const meta = await fetchGhMeta(parsed);
           if (meta) {
             card.linkMeta = meta;
+            if (meta.title) card.title = meta.title;
 
             // Apply githubStatusMap
             if (meta.labels && meta.labels.length > 0 && Object.keys(statusMap).length > 0) {

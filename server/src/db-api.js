@@ -176,6 +176,10 @@ function parseGithubCardUrl(url) {
   };
 }
 
+function allowsPendingGithubTitle(link) {
+  return !!parseGithubCardUrl(link);
+}
+
 function formatGithubMeta(parsed, data) {
   const labels = Array.isArray(data.labels)
     ? data.labels.map((label) => {
@@ -566,10 +570,11 @@ export function registerDatabaseApi(app, db, options = {}) {
     (req, res) => {
       const title = String(req.body.title || '').trim();
       const status = String(req.body.status || '').trim();
+      const link = req.body.link ? String(req.body.link).trim() : null;
       const column = columnForStatus(db, req.params.boardId, status);
 
-      if (!title) {
-        return res.status(400).json({ error: 'Title is required' });
+      if (!title && !allowsPendingGithubTitle(link)) {
+        return res.status(400).json({ error: 'Title is required unless a GitHub issue or PR link is provided' });
       }
       if (!column) {
         return res.status(400).json({ error: 'Invalid status' });
@@ -594,7 +599,7 @@ export function registerDatabaseApi(app, db, options = {}) {
         req.params.boardId,
         column.id,
         title,
-        req.body.link || null,
+        link,
         req.body.linkMeta ? JSON.stringify(req.body.linkMeta) : null,
         req.body.deadline || null,
         req.body.recurring ? JSON.stringify(req.body.recurring) : null,
@@ -609,7 +614,7 @@ export function registerDatabaseApi(app, db, options = {}) {
         title,
         status: column.name,
         columnId: column.id,
-        link: req.body.link || null,
+        link,
         linkMeta: req.body.linkMeta || null,
         deadline: req.body.deadline || null,
         recurring: req.body.recurring || null,
@@ -667,10 +672,11 @@ export function registerDatabaseApi(app, db, options = {}) {
         cards.forEach((card, index) => {
           const id = String(card.id || crypto.randomUUID());
           const title = String(card.title || '').trim();
+          const link = card.link ? String(card.link).trim() : null;
           const column = columnsByName.get(String(card.status || '').trim());
 
-          if (!title) {
-            throw new Error('Card title is required');
+          if (!title && !allowsPendingGithubTitle(link)) {
+            throw new Error('Card title is required unless a GitHub issue or PR link is provided');
           }
           if (!column) {
             throw new Error(`Invalid card status: ${card.status}`);
@@ -682,7 +688,7 @@ export function registerDatabaseApi(app, db, options = {}) {
             req.params.boardId,
             column.id,
             title,
-            card.link || null,
+            link,
             serializeNullableJson(card.linkMeta),
             card.deadline || null,
             serializeNullableJson(card.recurring),
@@ -733,7 +739,7 @@ export function registerDatabaseApi(app, db, options = {}) {
       const statusMap = parseJson(settingsRow?.githubStatusMap, {});
 
       const cards = db.prepare(`
-        SELECT id, link, column_id AS columnId
+        SELECT id, title, link, column_id AS columnId
         FROM cards
         WHERE board_id = ? AND link LIKE '%github.com%'
         ORDER BY position ASC, id ASC
@@ -745,7 +751,7 @@ export function registerDatabaseApi(app, db, options = {}) {
 
       const updateCard = db.prepare(`
         UPDATE cards
-        SET link_meta = ?, column_id = ?, position = ?, updated_at = ?
+        SET title = ?, link_meta = ?, column_id = ?, position = ?, updated_at = ?
         WHERE id = ?
       `);
 
@@ -778,7 +784,7 @@ export function registerDatabaseApi(app, db, options = {}) {
             position = currentPosition.position;
           }
 
-          updateCard.run(JSON.stringify(meta), columnId, position, nowIso(), card.id);
+          updateCard.run(meta.title || card.title, JSON.stringify(meta), columnId, position, nowIso(), card.id);
           updated++;
         } catch {
           failed++;
@@ -825,9 +831,12 @@ export function registerDatabaseApi(app, db, options = {}) {
       WHERE id = ?
     `).get(req.params.cardId);
 
+    const nextLink = req.body.link !== undefined
+      ? (req.body.link ? String(req.body.link).trim() : null)
+      : existing.link;
     const title = req.body.title !== undefined ? String(req.body.title).trim() : existing.title;
-    if (!title) {
-      return res.status(400).json({ error: 'Title is required' });
+    if (!title && !allowsPendingGithubTitle(nextLink)) {
+      return res.status(400).json({ error: 'Title is required unless a GitHub issue or PR link is provided' });
     }
 
     const at = nowIso();
@@ -838,7 +847,7 @@ export function registerDatabaseApi(app, db, options = {}) {
     `).run(
       title,
       columnId,
-      req.body.link !== undefined ? req.body.link : existing.link,
+      nextLink,
       req.body.linkMeta !== undefined ? JSON.stringify(req.body.linkMeta) : existing.linkMeta,
       req.body.deadline !== undefined ? req.body.deadline : existing.deadline,
       req.body.recurring !== undefined ? JSON.stringify(req.body.recurring) : existing.recurring,

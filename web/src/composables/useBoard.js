@@ -87,7 +87,7 @@ export function useBoard() {
 
     const payload = await api(`/api/account/boards/${encodeURIComponent(boardId)}/cards`, {
       method: 'PUT',
-      body: JSON.stringify({ cards }),
+      body: JSON.stringify({ cards: cards.map(normalizeCardForApi) }),
     });
     setActiveBoard(payload.board);
   }
@@ -106,7 +106,7 @@ export function useBoard() {
     if (!activeBoardId.value) throw new Error('No active board selected');
     const created = await api(`/api/account/boards/${encodeURIComponent(activeBoardId.value)}/cards`, {
       method: 'POST',
-      body: JSON.stringify(card),
+      body: JSON.stringify(normalizeCardForApi(card)),
     });
     await loadBoard(activeBoardId.value);
     return created;
@@ -115,7 +115,7 @@ export function useBoard() {
   async function updateCard(card) {
     await api(`/api/account/cards/${encodeURIComponent(card.id)}`, {
       method: 'PATCH',
-      body: JSON.stringify(card),
+      body: JSON.stringify(normalizeCardForApi(card)),
     });
     await loadBoard(activeBoardId.value);
   }
@@ -184,4 +184,32 @@ export function useBoard() {
     loadSettings,
     saveSettings,
   };
+}
+
+function normalizeCardForApi(card) {
+  const title = card.title?.trim();
+  if (title) return card;
+
+  const fallbackTitle = githubIssueLabel(card.link);
+  if (!fallbackTitle) return card;
+
+  return {
+    ...card,
+    title: fallbackTitle,
+  };
+}
+
+function githubIssueLabel(link) {
+  if (!link) return null;
+  try {
+    const url = new URL(link.startsWith('http') ? link.trim() : `https://${link.trim()}`);
+    if (url.hostname !== 'github.com') return null;
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (parts.length >= 4 && (parts[2] === 'issues' || parts[2] === 'pull')) {
+      return `${parts[0]}/${parts[1]}#${parts[3]}`;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }

@@ -954,10 +954,11 @@ components:
 
     CreateCardRequest:
       type: object
-      required: [title, status]
+      required: [status]
       properties:
         title:
           type: string
+          description: Required unless `link` is a GitHub issue or pull request URL.
           example: Implement login page
         status:
           type: string

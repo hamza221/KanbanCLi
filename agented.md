@@ -148,6 +148,7 @@ Fires for any card whose deadline is within 3 days. Uses the Notification API wi
 - Syncs maximum metadata: title, state, labels (with colors), milestone, assignees, author, body excerpt, comments count, created/updated/closed dates
 - Labels stored as `Array<{name: string, color: string|null}>` (not plain strings)
 - Auto-extracts milestone `due_on` as card deadline
+- `card add -l <github-issue-or-pr-url>` may omit the title; `card refresh` fills it from GitHub metadata
 - `card refresh` updates all GitHub-linked cards with fresh metadata and **applies `githubStatusMap`** to move cards based on label matches
 - **Web UI auto-refresh**: On board load, calls `POST /api/github-refresh` to update all GitHub-linked cards in background (also applies status mapping)
 - GitHub labels displayed as color-coded chips on cards
@@ -188,7 +189,7 @@ The CLI is interactive by default when run by a human at a terminal (TTY). Missi
 - `board show`: select board
 - `card list`: select board + optional column filter
 - `card show`: select board + select card
-- `card add`: select board + prompt title + select status + optional deadline
+- `card add`: select board + prompt title (unless a GitHub issue/PR link is provided) + select status + optional deadline
 - `card edit`: select board + select card + prompt editable fields
 - `card remove`: select board + select card + confirm deletion
 - `move`: select board + select card + select target column

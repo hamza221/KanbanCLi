@@ -56,10 +56,15 @@ export const linkMetaSchema = z
   .nullable()
   .optional();
 
+function isGithubIssueOrPrLink(link) {
+  const cleaned = String(link || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  return /^github\.com\/[^/]+\/[^/]+\/(issues|pull)\/\d+/.test(cleaned);
+}
+
 // --- Card schema ---
 export const cardSchema = z.object({
   id: z.string().min(1),
-  title: z.string().min(1),
+  title: z.string(),
   status: z.string().min(1),
   link: z.string().nullable().optional(),
   linkMeta: linkMetaSchema,
@@ -68,6 +73,9 @@ export const cardSchema = z.object({
   customFields: z.record(z.unknown()).optional().default({}),
   createdAt: z.string(),
   updatedAt: z.string(),
+}).refine((card) => card.title.trim() || isGithubIssueOrPrLink(card.link), {
+  message: 'Title is required unless a GitHub issue or PR link is provided',
+  path: ['title'],
 });
 
 // --- Cards array schema ---

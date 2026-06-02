@@ -149,6 +149,57 @@ describe('useBoard', () => {
     expect(boardData.value.cards[0].title).toBe('Card');
   });
 
+  it('createCard sends a GitHub reference title when the form title is blank', async () => {
+    vi.stubGlobal('fetch', vi.fn((url, opts) => {
+      if (url === '/api/account/boards/board-1/cards' && opts?.method === 'POST') {
+        return jsonResponse({ id: 'card-1', title: 'acme/repo#42', status: 'To Do' }, true, 201);
+      }
+      if (url === '/api/account/boards/board-1') {
+        return jsonResponse({
+          ...boardPayload,
+          cards: [{
+            id: 'card-1',
+            title: 'acme/repo#42',
+            status: 'To Do',
+            link: 'https://github.com/acme/repo/issues/42',
+          }],
+        });
+      }
+      return jsonResponse({}, false, 404);
+    }));
+
+    const { createBoard, createCard } = useBoard();
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: () => Promise.resolve(boardPayload),
+    });
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve([{ id: 'board-1', name: 'default' }]),
+    });
+
+    await createBoard('default', ['To Do']);
+    await createCard({
+      title: '',
+      status: 'To Do',
+      link: 'https://github.com/acme/repo/issues/42',
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/account/boards/board-1/cards',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'acme/repo#42',
+          status: 'To Do',
+          link: 'https://github.com/acme/repo/issues/42',
+        }),
+      })
+    );
+  });
+
   it('refreshGitHubMeta posts to the account board refresh endpoint', async () => {
     const refreshedBoard = {
       ...boardPayload,

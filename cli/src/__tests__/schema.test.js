@@ -125,7 +125,16 @@ describe('cardSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('rejects card without title', () => {
+  it('validates card with pending sync title', () => {
+    const result = cardSchema.safeParse({
+      ...validCard,
+      title: '',
+      link: 'https://github.com/org/repo/issues/1',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects card without title or GitHub issue/PR link', () => {
     const result = cardSchema.safeParse({ ...validCard, title: '' });
     expect(result.success).toBe(false);
   });

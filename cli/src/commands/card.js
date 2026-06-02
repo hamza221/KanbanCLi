@@ -10,6 +10,7 @@ import {
 } from '../lib/store.js';
 import { validateCustomFields } from '../lib/schema.js';
 import { isInteractive, promptIfMissing, selectIfMissing, confirmPrompt } from '../lib/prompt.js';
+import { parseGitHubUrl } from '../lib/github.js';
 
 export function registerCardCommands(program) {
   const card = program
@@ -77,7 +78,7 @@ Examples:
           const deadlineStr = c.deadline ? chalk.dim(` [${c.deadline}]`) : '';
           const recurring = c.recurring ? chalk.magenta(' ↻') : '';
           const link = c.link ? chalk.dim(' 🔗') : '';
-          console.log(`  ${chalk.dim(c.id)} ${c.title}${deadlineStr}${recurring}${link}`);
+          console.log(`  ${chalk.dim(c.id)} ${formatCardTitle(c)}${deadlineStr}${recurring}${link}`);
         }
         console.log();
       }
@@ -114,7 +115,7 @@ Examples:
         return;
       }
 
-      console.log(chalk.bold(cardItem.title));
+      console.log(chalk.bold(formatCardTitle(cardItem)));
       console.log(`${chalk.dim('ID:')}       ${cardItem.id}`);
       console.log(`${chalk.dim('Status:')}   ${cardItem.status}`);
       console.log(`${chalk.dim('Created:')}  ${formatDate(cardItem.createdAt)}`);
@@ -180,14 +181,19 @@ Examples:
       }
       const config = await readConfig(boardName);
 
-      // Prompt for title if missing
+      const link = opts.link?.trim() || null;
+      const hasGithubCardLink = link && parseGitHubUrl(link);
+
+      // Prompt for title if missing and it cannot be filled by GitHub sync.
       title = await promptIfMissing(title, {
         message: 'Card title:',
         validate: (v) => v.length > 0 || 'Title is required',
-      }, interactive);
+      }, interactive && !hasGithubCardLink);
 
-      if (!title) {
-        console.error(chalk.red('Card title is required.'));
+      title = title?.trim() || '';
+
+      if (!title && !hasGithubCardLink) {
+        console.error(chalk.red('Card title is required unless a GitHub issue or PR link is provided.'));
         process.exitCode = 1;
         return;
       }
@@ -239,7 +245,7 @@ Examples:
         id: nanoid(10),
         title,
         status,
-        link: opts.link || null,
+        link,
         linkMeta: null,
         deadline: deadline || null,
         recurring: opts.recurring
@@ -258,7 +264,7 @@ Examples:
       cards.push(cardItem);
       await writeCards(boardName, cards);
 
-      console.log(chalk.green(`Card "${title}" added to "${status}" (${chalk.dim(cardItem.id)})`));
+      console.log(chalk.green(`Card "${formatCardTitle(cardItem)}" added to "${status}" (${chalk.dim(cardItem.id)})`));
     });
 
   card
@@ -307,7 +313,7 @@ Examples:
       const hasOpts = opts.title || opts.status || opts.link || opts.deadline || Object.keys(opts.field).length > 0;
       if (!hasOpts && interactive) {
         opts.title = await promptIfMissing(undefined, {
-          message: `Title (current: "${cardItem.title}", Enter to keep):`,
+          message: `Title (current: "${formatCardTitle(cardItem)}", Enter to keep):`,
         }, interactive) || undefined;
 
         const { select } = await import('@inquirer/prompts');
@@ -350,7 +356,7 @@ Examples:
       cardItem.updatedAt = new Date().toISOString();
 
       await writeCards(boardName, cards);
-      console.log(chalk.green(`Card "${cardItem.title}" updated.`));
+      console.log(chalk.green(`Card "${formatCardTitle(cardItem)}" updated.`));
     });
 
   card
@@ -387,7 +393,7 @@ Examples:
 
       // Confirm deletion in interactive mode
       const confirmed = await confirmPrompt({
-        message: `Remove card "${removed.title}"?`,
+        message: `Remove card "${formatCardTitle(removed)}"?`,
         default: false,
       }, interactive);
 
@@ -398,7 +404,7 @@ Examples:
 
       cards.splice(idx, 1);
       await writeCards(boardName, cards);
-      console.log(chalk.green(`Card "${removed.title}" removed.`));
+      console.log(chalk.green(`Card "${formatCardTitle(removed)}" removed.`));
     });
 
   return card;
@@ -446,7 +452,7 @@ async function promptCard(cardId, cards, interactive) {
   return select({
     message: 'Select card:',
     choices: cards.map((c) => ({
-      name: `${c.title} (${c.status}) [${c.id}]`,
+      name: `${formatCardTitle(c)} (${c.status}) [${c.id}]`,
       value: c.id,
     })),
   });
@@ -469,4 +475,14 @@ function formatDate(isoString) {
   } catch {
     return isoString;
   }
+}
+
+function formatCardTitle(card) {
+  const title = card.title?.trim();
+  if (title) return title;
+
+  const parsed = card.link ? parseGitHubUrl(card.link) : null;
+  if (parsed) return `${parsed.owner}/${parsed.repo}#${parsed.number}`;
+
+  return 'Untitled card';
 }

@@ -43,6 +43,9 @@ kanban card add my-project "Fix bug #42" -s "To Do" -d 2026-04-01
 # With a link
 kanban card add my-project "Auth issue" -s "To Do" -l https://github.com/user/repo/issues/42
 
+# GitHub issue/PR link only (title is filled by sync)
+kanban card add my-project -l https://github.com/user/repo/issues/42
+
 # Recurring (resets weekly)
 kanban card add my-project "Weekly standup notes" -s "To Do" -r
 ```
@@ -107,6 +110,8 @@ kanban card add-gh my-project https://github.com/user/repo/issues/42
 ```
 
 This creates a card with the issue/PR title and stores metadata (state, labels, milestone, assignees, etc.).
+
+You can also create a pending GitHub-linked card with `kanban card add my-project -l <github-issue-or-pr-url>` and let refresh fill the title later.
 
 ### Refresh Metadata
 

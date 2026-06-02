@@ -480,8 +480,9 @@ function onEditCard(card) {
 }
 
 function onDeleteCard(card) {
+  const title = displayCardTitle(card);
   confirm.require({
-    message: `Delete "${card.title}"? This cannot be undone.`,
+    message: `Delete "${title}"? This cannot be undone.`,
     header: 'Confirm Delete',
     icon: 'pi pi-trash',
     acceptClass: 'p-button-danger',
@@ -490,7 +491,7 @@ function onDeleteCard(card) {
       toast.add({
         severity: 'success',
         summary: 'Card deleted',
-        detail: `"${card.title}" has been removed.`,
+        detail: `"${title}" has been removed.`,
         life: 3000,
       });
     },
@@ -523,12 +524,13 @@ async function onSettingsSave(settings) {
 }
 
 async function onCardSave(card) {
+  const title = displayCardTitle(card);
   if (editingCard.value) {
     await updateCard(card);
     toast.add({
       severity: 'success',
       summary: 'Card updated',
-      detail: `"${card.title}" has been saved.`,
+      detail: `"${title}" has been saved.`,
       life: 3000,
     });
   } else {
@@ -536,11 +538,36 @@ async function onCardSave(card) {
     toast.add({
       severity: 'success',
       summary: 'Card added',
-      detail: `"${card.title}" added to "${card.status}".`,
+      detail: `"${title}" added to "${card.status}".`,
       life: 3000,
     });
   }
+  if (githubIssueLabel(card.link)) {
+    await refreshGitHubMeta(activeBoard.value);
+  }
   showAddCard.value = false;
   editingCard.value = null;
+}
+
+function displayCardTitle(card) {
+  const title = card.title?.trim();
+  if (title) return title;
+  if (card.linkMeta?.title) return card.linkMeta.title;
+  return githubIssueLabel(card.link) || 'Untitled card';
+}
+
+function githubIssueLabel(link) {
+  if (!link) return null;
+  try {
+    const url = new URL(link.startsWith('http') ? link : `https://${link}`);
+    if (url.hostname !== 'github.com') return null;
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (parts.length >= 4 && (parts[2] === 'issues' || parts[2] === 'pull')) {
+      return `${parts[0]}/${parts[1]}#${parts[3]}`;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 </script>

@@ -363,6 +363,7 @@ export default defineConfig({
                   const meta = await fetchGhMeta(parsed);
                   if (meta) {
                     card.linkMeta = meta;
+                    if (meta.title) card.title = meta.title;
 
                     // Apply githubStatusMap: check if any label maps to a column
                     if (meta.labels && meta.labels.length > 0 && Object.keys(statusMap).length > 0) {

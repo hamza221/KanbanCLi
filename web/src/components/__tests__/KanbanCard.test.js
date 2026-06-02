@@ -69,6 +69,16 @@ describe('KanbanCard', () => {
     expect(wrapper.find('a').exists()).toBe(true);
   });
 
+  it('renders a GitHub reference when title is pending sync', () => {
+    const wrapper = mount(KanbanCard, {
+      props: {
+        card: { ...baseCard, title: '', link: 'https://github.com/a/b/issues/1' },
+        config,
+      },
+    });
+    expect(wrapper.find('.kanban-card-title').text()).toBe('a/b#1');
+  });
+
   it('emits edit event when edit button is clicked', async () => {
     const wrapper = mount(KanbanCard, {
       props: { card: baseCard, config },
