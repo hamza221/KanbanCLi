@@ -205,6 +205,49 @@ select {
   margin-block-start: auto;
 }
 
+.kanban-sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  border-radius: var(--kb-radius-sm);
+}
+
+.kanban-sidebar-user span:not(.kanban-user-avatar) {
+  display: block;
+  color: var(--kb-text);
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.kanban-sidebar-user small {
+  display: block;
+  overflow: hidden;
+  max-inline-size: 160px;
+  color: var(--kb-text-3);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanban-user-avatar {
+  display: grid;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8833a, #d8602f);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.kanban-user-avatar.is-image {
+  display: block;
+  object-fit: cover;
+}
+
 .kanban-main {
   display: flex;
   min-inline-size: 0;
@@ -353,6 +396,95 @@ select {
   justify-content: center;
   gap: 0.75rem;
   color: var(--kb-text-2);
+}
+
+.auth-loading {
+  grid-column: 1 / -1;
+}
+
+.auth-shell {
+  display: grid;
+  grid-column: 1 / -1;
+  min-block-size: 100%;
+  place-items: center;
+  padding: 24px;
+  background: var(--kb-canvas);
+}
+
+.auth-panel {
+  inline-size: min(360px, 100%);
+  padding: 16px;
+  border: 1px solid var(--kb-border);
+  border-radius: 14px;
+  background: var(--kb-surface);
+  box-shadow: var(--kb-shadow-lg);
+}
+
+.auth-brand {
+  padding: 4px 2px 18px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-input {
+  inline-size: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--kb-border-strong);
+  border-radius: var(--kb-radius-sm);
+  background: var(--kb-surface);
+  color: var(--kb-text);
+  font-size: 13px;
+  outline: none;
+}
+
+.auth-input:focus {
+  border-color: var(--kb-accent);
+  box-shadow: 0 0 0 2px rgb(94 106 210 / 14%);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-block: 12px;
+  color: var(--kb-text-3);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  block-size: 1px;
+  flex: 1;
+  background: var(--kb-border);
+}
+
+.auth-github.p-button {
+  justify-content: center;
+  inline-size: 100%;
+}
+
+.auth-switch {
+  inline-size: 100%;
+  margin-block-start: 12px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--kb-radius-sm);
+  background: transparent;
+  color: var(--kb-text-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+
+.auth-switch:hover {
+  background: var(--kb-surface-2);
+  color: var(--kb-text);
 }
 
 .kanban-empty h2,

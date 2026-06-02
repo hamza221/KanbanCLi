@@ -165,31 +165,54 @@ Recurring tasks use a weekly frequency. The `reset` command checks each recurrin
 
 ## Web UI
 
-Start the development server:
-
-```bash
-npm run dev
-```
-
-Or build and run the production server:
+Build and run the integrated web app and backend:
 
 ```bash
 npm run build
 npm run start
 ```
 
+Open:
+
+```bash
+http://localhost:3000
+```
+
+For frontend development with Vite, keep the backend running on `http://localhost:3000` and run Vite separately:
+
+```bash
+# Terminal 1
+KANBAN_DB_PATH=./data/kanban.db npm run start
+
+# Terminal 2
+npm run dev
+```
+
 The web UI provides:
 
+- **Signup/login** — Account-scoped boards with HTTP-only session cookies
+- **GitHub login** — OAuth login with GitHub avatars for GitHub users
 - **Board selector** — Switch between boards or create new ones
 - **Drag-and-drop** — Move cards between columns by dragging
 - **Card editor** — Edit title, status, link, deadline, custom fields
-- **GitHub refresh** — Button to refresh all GitHub metadata
 - **Dark mode** — Toggle via the UI, persisted in localStorage
 - **Settings** — Configure GitHub label-to-column mappings
 
 ## Data Storage
 
-Board data is stored as JSON files in the `boards/` directory:
+The current web UI stores account, session, board, column, card, and settings data in a SQL database. By default, the production server uses:
+
+```
+data/kanban.db
+```
+
+Override the database path with:
+
+```bash
+KANBAN_DB_PATH=/path/to/kanban.db npm run start
+```
+
+The CLI still uses legacy JSON board storage in the `boards/` directory:
 
 ```
 boards/

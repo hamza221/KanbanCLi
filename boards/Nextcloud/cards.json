@@ -60,9 +60,9 @@
       "bodyExcerpt": "## Use case\n\nAs a Nextcloud Calendar user, I want to delegate my calendar(s) to another Nextcloud user, so that they can act on my behalf. This would be used by assistants, vacation replacements, and ",
       "commentsCount": 8,
       "ghCreatedAt": "2020-11-17T16:24:28Z",
-      "ghUpdatedAt": "2026-05-28T11:40:14Z",
+      "ghUpdatedAt": "2026-06-02T15:35:54Z",
       "ghClosedAt": null,
-      "fetchedAt": "2026-06-01T11:07:47.239Z"
+      "fetchedAt": "2026-06-02T16:28:58.656Z"
     },
     "deadline": null,
     "recurring": null,
@@ -131,9 +131,9 @@
       "bodyExcerpt": "## Use case\n\nAs a Nextcloud Calendar user, I want to delegate my calendar(s) to another Nextcloud user, so that they can act on my behalf. This would be used by assistants, vacation replacements, and ",
       "commentsCount": 8,
       "ghCreatedAt": "2020-11-17T16:24:28Z",
-      "ghUpdatedAt": "2026-05-28T11:40:14Z",
+      "ghUpdatedAt": "2026-06-02T15:35:54Z",
       "ghClosedAt": null,
-      "fetchedAt": "2026-06-01T11:07:48.592Z"
+      "fetchedAt": "2026-06-02T16:28:59.397Z"
     },
     "deadline": null,
     "recurring": null,
@@ -183,7 +183,7 @@
       "ghCreatedAt": "2025-05-05T07:32:56Z",
       "ghUpdatedAt": "2026-01-20T11:47:22Z",
       "ghClosedAt": null,
-      "fetchedAt": "2026-06-01T11:07:49.354Z"
+      "fetchedAt": "2026-06-02T16:29:00.021Z"
     },
     "deadline": null,
     "recurring": null,

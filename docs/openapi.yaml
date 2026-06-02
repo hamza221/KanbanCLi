@@ -5,7 +5,9 @@ info:
     REST API for CLIkanban — a CLI and web-based Kanban board manager.
 
     The API is served by the Express production server (`server/src/index.js`)
-    and mirrored by the Vite dev middleware during development.
+    at `http://localhost:3000` for local testing. The current web UI uses the
+    authenticated account API. Legacy file-backed endpoints remain available
+    for CLI/local JSON compatibility.
   version: 1.0.0
   license:
     name: MIT
@@ -18,6 +20,444 @@ servers:
     description: Local development (HTTPS)
 
 paths:
+  /api/auth/signup:
+    post:
+      operationId: signup
+      summary: Create an account
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthSignupRequest"
+      responses:
+        "201":
+          description: Account created and session cookie set
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUserResponse"
+        "400":
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Account already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/auth/login:
+    post:
+      operationId: login
+      summary: Sign in
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+      responses:
+        "200":
+          description: Session cookie set
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUserResponse"
+        "401":
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/auth/github:
+    get:
+      operationId: startGithubOAuth
+      summary: Start GitHub OAuth login
+      tags: [Auth]
+      responses:
+        "302":
+          description: Redirects to GitHub authorization
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+            Set-Cookie:
+              schema:
+                type: string
+        "503":
+          description: GitHub OAuth is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/auth/github/callback:
+    get:
+      operationId: completeGithubOAuth
+      summary: Complete GitHub OAuth login
+      tags: [Auth]
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Session cookie set and browser redirected to the app
+          headers:
+            Location:
+              schema:
+                type: string
+            Set-Cookie:
+              schema:
+                type: string
+        "400":
+          description: Invalid OAuth state or inaccessible GitHub email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: GitHub OAuth token or profile request failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: GitHub OAuth is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/auth/logout:
+    post:
+      operationId: logout
+      summary: Sign out
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Session destroyed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ok"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/me:
+    get:
+      operationId: getCurrentUser
+      summary: Get the current authenticated user
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUserResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/account/boards:
+    get:
+      operationId: listAccountBoards
+      summary: List boards for the current user
+      tags: [Account Boards]
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Board summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccountBoardSummary"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      operationId: createAccountBoard
+      summary: Create an account-scoped board
+      tags: [Account Boards]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBoardRequest"
+      responses:
+        "201":
+          description: Board created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountBoard"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Board already exists for this account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/account/boards/{boardId}:
+    get:
+      operationId: getAccountBoard
+      summary: Get an account-scoped board
+      tags: [Account Boards]
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/boardId"
+      responses:
+        "200":
+          description: Board config, columns, cards, and settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountBoard"
+        "404":
+          description: Board not found or not accessible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/account/boards/{boardId}/cards:
+    post:
+      operationId: createAccountCard
+      summary: Create a card
+      tags: [Account Cards]
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/boardId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCardRequest"
+      responses:
+        "201":
+          description: Card created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+
+    put:
+      operationId: replaceAccountCards
+      summary: Replace/sync a board card list
+      description: Used by drag/drop and bulk card persistence.
+      tags: [Account Cards]
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/boardId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cards]
+              properties:
+                cards:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Card"
+      responses:
+        "200":
+          description: Cards synced
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  board:
+                    $ref: "#/components/schemas/AccountBoard"
+
+  /api/account/boards/{boardId}/github-refresh:
+    post:
+      operationId: refreshAccountBoardGithubMetadata
+      summary: Refresh GitHub metadata for account board cards
+      description: Fetches metadata for GitHub issue/PR links, updates card `linkMeta`, and applies the board's GitHub label-to-column mapping.
+      tags: [Account Cards]
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/boardId"
+      responses:
+        "200":
+          description: GitHub metadata refresh result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, updated, moved, failed, board]
+                properties:
+                  ok:
+                    type: boolean
+                  updated:
+                    type: integer
+                    example: 3
+                  moved:
+                    type: integer
+                    example: 1
+                  failed:
+                    type: integer
+                    example: 0
+                  board:
+                    $ref: "#/components/schemas/AccountBoard"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Permission denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Board not found or not accessible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/account/cards/{cardId}:
+    patch:
+      operationId: updateAccountCard
+      summary: Update one card
+      tags: [Account Cards]
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/cardId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Card"
+      responses:
+        "200":
+          description: Card updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ok"
+
+    delete:
+      operationId: deleteAccountCard
+      summary: Delete one card
+      tags: [Account Cards]
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/cardId"
+      responses:
+        "200":
+          description: Card deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ok"
+
+  /api/account/boards/{boardId}/settings:
+    get:
+      operationId: getAccountBoardSettings
+      summary: Get account board settings
+      tags: [Account Settings]
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/boardId"
+      responses:
+        "200":
+          description: Board settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardSettings"
+
+    put:
+      operationId: updateAccountBoardSettings
+      summary: Update account board settings
+      tags: [Account Settings]
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/boardId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardSettings"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ok"
+
   /api/boards:
     get:
       operationId: listBoards
@@ -254,7 +694,31 @@ paths:
                 $ref: "#/components/schemas/Error"
 
 components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: clikanban_session
+
   parameters:
+    boardId:
+      name: boardId
+      in: path
+      required: true
+      description: Account board ID
+      schema:
+        type: string
+        format: uuid
+
+    cardId:
+      name: cardId
+      in: path
+      required: true
+      description: Card ID
+      schema:
+        type: string
+        format: uuid
+
     boardName:
       name: name
       in: query
@@ -279,6 +743,56 @@ components:
         ok:
           type: boolean
           example: true
+
+    User:
+      type: object
+      required: [id, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        name:
+          type: string
+          nullable: true
+          example: Ada Lovelace
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+          example: https://avatars.githubusercontent.com/u/12345
+
+    AuthSignupRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        password:
+          type: string
+          minLength: 8
+
+    AuthLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthUserResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
 
     CreateBoardRequest:
       type: object
@@ -313,6 +827,61 @@ components:
           items:
             $ref: "#/components/schemas/CustomFieldDef"
           default: []
+
+    AccountBoardSummary:
+      type: object
+      required: [id, name, ownerId, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Product
+        ownerId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [owner, editor, viewer]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AccountBoard:
+      allOf:
+        - $ref: "#/components/schemas/AccountBoardSummary"
+        - type: object
+          properties:
+            config:
+              $ref: "#/components/schemas/BoardConfig"
+            columns:
+              type: array
+              items:
+                $ref: "#/components/schemas/BoardColumn"
+            cards:
+              type: array
+              items:
+                $ref: "#/components/schemas/Card"
+            settings:
+              $ref: "#/components/schemas/BoardSettings"
+
+    BoardColumn:
+      type: object
+      required: [id, name, position]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: To Do
+        position:
+          type: integer
+          example: 0
 
     CustomFieldDef:
       type: object
@@ -382,6 +951,32 @@ components:
           type: string
           format: date-time
           example: "2026-03-18T14:22:00.000Z"
+
+    CreateCardRequest:
+      type: object
+      required: [title, status]
+      properties:
+        title:
+          type: string
+          example: Implement login page
+        status:
+          type: string
+          example: To Do
+        link:
+          type: string
+          nullable: true
+        linkMeta:
+          $ref: "#/components/schemas/LinkMeta"
+        deadline:
+          type: string
+          nullable: true
+          example: "2026-04-01"
+        recurring:
+          $ref: "#/components/schemas/Recurring"
+        customFields:
+          type: object
+          additionalProperties: true
+          default: {}
 
     LinkMeta:
       type: object
@@ -490,11 +1085,19 @@ components:
             done: Done
 
 tags:
+  - name: Auth
+    description: Account signup, login, logout, and current user
+  - name: Account Boards
+    description: Authenticated DB-backed boards
+  - name: Account Cards
+    description: Authenticated DB-backed cards
+  - name: Account Settings
+    description: Authenticated DB-backed board settings
   - name: Boards
-    description: List and create boards
+    description: Legacy file-backed board list/create endpoints
   - name: Board
-    description: Get and update a specific board's config and cards
+    description: Legacy file-backed board config and cards
   - name: Settings
-    description: Board settings (GitHub label-to-status mapping)
+    description: Legacy file-backed board settings
   - name: GitHub
     description: GitHub integration (metadata refresh)

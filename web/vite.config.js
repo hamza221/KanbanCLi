@@ -80,6 +80,14 @@ async function fetchGhMeta(parsed) {
 }
 
 export default defineConfig({
+  server: {
+    proxy: {
+      '^/api/(auth|account|me)': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  },
   plugins: [
     vue(),
     // Dev middleware to save board JSON from the browser

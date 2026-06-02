@@ -20,6 +20,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { openDatabase } from './db.js';
+import { registerDatabaseApi } from './db-api.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -28,6 +30,7 @@ const __dirname = path.dirname(__filename);
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 const BOARDS_DIR = path.resolve(PROJECT_ROOT, 'boards');
+const DATA_DIR = path.resolve(PROJECT_ROOT, 'data');
 const DIST_DIR = path.resolve(PROJECT_ROOT, 'web', 'dist');
 const BOARD_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 
@@ -114,10 +117,20 @@ async function fetchGhMeta(parsed) {
 
 // --- Express app factory ---
 
-export function createApp(boardsDir = BOARDS_DIR) {
+export function createApp(boardsDir = BOARDS_DIR, options = {}) {
   const app = express();
 
   app.use(express.json());
+
+  if (options.dbPath) {
+    const db = openDatabase(options.dbPath);
+    app.locals.db = db;
+    registerDatabaseApi(app, db, {
+      secureCookies: options.secureCookies,
+      githubOAuth: options.githubOAuth,
+      fetch: options.fetch,
+    });
+  }
 
   // --- API routes ---
 
@@ -371,7 +384,7 @@ export function createApp(boardsDir = BOARDS_DIR) {
     app.use(express.static(DIST_DIR));
 
     // SPA fallback — serve index.html for all non-API routes
-    app.get('*', (req, res) => {
+    app.use((req, res) => {
       if (req.path.startsWith('/api/')) {
         return res.status(404).json({ error: 'Not found' });
       }
@@ -390,7 +403,11 @@ async function main() {
   const port = portArg !== -1 ? parseInt(args[portArg + 1], 10) : parseInt(process.env.PORT || '3000', 10);
   const useHttps = args.includes('--https') || process.env.HTTPS === 'true';
 
-  const app = createApp();
+  const dbPath = process.env.KANBAN_DB_PATH || path.resolve(DATA_DIR, 'kanban.db');
+  const app = createApp(BOARDS_DIR, {
+    dbPath,
+    secureCookies: useHttps || process.env.COOKIE_SECURE === 'true',
+  });
 
   if (useHttps) {
     const { default: https } = await import('https');

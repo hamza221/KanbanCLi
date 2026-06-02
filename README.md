@@ -1,6 +1,6 @@
 # CLIkanban
 
-A CLI and web-based Kanban board manager. Manage boards, cards, and columns from the terminal or a self-hosted Vue web app with GitHub issue/PR integration.
+A CLI and web-based Kanban board manager. Manage boards, cards, and columns from the terminal or a self-hosted Vue web app with account login, database-backed persistence, and GitHub issue/PR integration.
 
 <!-- Replace OWNER/REPO with your GitHub username/repository -->
 <!--
@@ -12,6 +12,8 @@ A CLI and web-based Kanban board manager. Manage boards, cards, and columns from
 ## Features
 
 - **CLI + Web** — Full-featured CLI (Commander.js) and Vue 3 SPA with drag-and-drop
+- **Accounts + auth** — Email/password signup and login with HTTP-only session cookies
+- **Database-backed web app** — Authenticated boards, columns, cards, settings, and sessions persisted in SQL
 - **Interactive mode** — CLI prompts for missing arguments when run in a terminal
 - **GitHub integration** — Add cards from GitHub issues/PRs, auto-refresh metadata, map labels to columns
 - **Recurring tasks** — Weekly recurring cards with automatic reset
@@ -34,13 +36,39 @@ kanban help
 # Or run without linking via npm
 npm run cli -- help
 
-# Start the dev server (Vite)
-npm run dev
-
-# Build and start the production server
+# Build and start the backend + web server
 npm run build
 npm run start
+
+# Open the app
+open http://localhost:3000
 ```
+
+For frontend development with Vite, run the Express backend on `http://localhost:3000` in one terminal and Vite in another. Authenticated `/api/auth`, `/api/me`, and `/api/account` requests are proxied to the backend:
+
+```bash
+KANBAN_DB_PATH=./data/kanban.db npm run start
+npm run dev
+```
+
+### GitHub OAuth for local login
+
+Create a GitHub OAuth App with:
+
+- Homepage URL: `http://localhost:3000`
+- Authorization callback URL: `http://localhost:3000/api/auth/github/callback`
+
+Then start the server with the OAuth credentials:
+
+```bash
+GITHUB_CLIENT_ID=your_client_id \
+GITHUB_CLIENT_SECRET=your_client_secret \
+GITHUB_OAUTH_REDIRECT_URL=http://localhost:3000/api/auth/github/callback \
+KANBAN_DB_PATH=./data/kanban.db \
+npm run start
+```
+
+The `GITHUB_OAUTH_REDIRECT_URL` value must match the callback URL registered in GitHub and the `redirect_uri` used when the login starts. GitHub users display their GitHub avatar; email/password users display initials. If GitHub does not expose an email address, CLIkanban stores a stable GitHub noreply-style email for that account.
 
 ## CLI Usage
 
@@ -94,6 +122,8 @@ kanban reset my-project                          # Process weekly resets
 
 The Vue 3 SPA provides:
 
+- Signup/login with account-scoped boards
+- GitHub login with avatar support for GitHub users
 - Drag-and-drop cards between columns (via `sortablejs-vue3`)
 - Board creation/selection
 - Card editing with custom fields, deadlines, and GitHub metadata
@@ -101,23 +131,58 @@ The Vue 3 SPA provides:
 - Dark mode toggle
 - Settings panel for GitHub label-to-column mapping
 
-Start the dev server:
-
-```bash
-npm run dev
-```
-
-Or build and serve with the production server:
+Run the integrated app for testing:
 
 ```bash
 npm run build
-npm run start          # HTTP on port 3000
-npm run start:https    # HTTPS with auto-generated self-signed cert
+npm run start
+```
+
+Then open:
+
+```bash
+http://localhost:3000
+```
+
+For Vite development:
+
+```bash
+# Terminal 1: backend/API on http://localhost:3000
+KANBAN_DB_PATH=./data/kanban.db npm run start
+
+# Terminal 2: Vite frontend with API proxy
+npm run dev
 ```
 
 ## API
 
-The server exposes a JSON API used by both the web UI and the dev middleware:
+The server exposes two API groups:
+
+- Authenticated account API used by the current web UI.
+- Legacy file-backed API used by the CLI/local JSON workflow.
+
+### Authenticated Account API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/signup` | Create an account and session |
+| POST | `/api/auth/login` | Create a session |
+| GET | `/api/auth/github` | Start GitHub OAuth login |
+| GET | `/api/auth/github/callback` | Complete GitHub OAuth login |
+| POST | `/api/auth/logout` | Destroy the current session |
+| GET | `/api/me` | Return the current authenticated user |
+| GET | `/api/account/boards` | List boards visible to the current user |
+| POST | `/api/account/boards` | Create a DB-backed board |
+| GET | `/api/account/boards/:boardId` | Get board config, columns, cards, and settings |
+| POST | `/api/account/boards/:boardId/cards` | Create a card |
+| PUT | `/api/account/boards/:boardId/cards` | Replace/sync the board card list, used by drag/drop |
+| POST | `/api/account/boards/:boardId/github-refresh` | Refresh GitHub issue/PR metadata for account board cards |
+| PATCH | `/api/account/cards/:cardId` | Update one card |
+| DELETE | `/api/account/cards/:cardId` | Delete one card |
+| GET | `/api/account/boards/:boardId/settings` | Get board settings |
+| PUT | `/api/account/boards/:boardId/settings` | Update board settings |
+
+### Legacy File API
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -133,6 +198,8 @@ Interactive API documentation is available at `/api/docs` (powered by [Scalar](h
 
 See [docs/openapi.yaml](docs/openapi.yaml) for the full OpenAPI 3.1 specification.
 
+GitHub metadata refresh uses the public GitHub REST API by default. Set `GITHUB_TOKEN` on the server for private repositories or higher API rate limits.
+
 ## Self-Hosting
 
 ```bash
@@ -141,6 +208,9 @@ npm run build
 
 # HTTP (default port 3000)
 node server/src/index.js
+
+# HTTP with an explicit database path
+KANBAN_DB_PATH=./data/kanban.db node server/src/index.js --port 3000
 
 # Custom port
 node server/src/index.js --port 8080
@@ -165,10 +235,14 @@ PORT=8080 docker compose up -d
 
 # Or build and run manually
 docker build -t clikanban .
-docker run -d -p 3000:3000 -v clikanban-boards:/app/boards clikanban
+docker run -d \
+  -p 3000:3000 \
+  -v clikanban-boards:/app/boards \
+  -v clikanban-data:/app/data \
+  clikanban
 ```
 
-Board data is persisted in a Docker volume. See [docs/hosting.md](docs/hosting.md) for a detailed guide on Docker, reverse proxies, systemd, and remote SSH access.
+Database state is persisted in `/app/data`; legacy board JSON is persisted in `/app/boards`. See [docs/hosting.md](docs/hosting.md) for a detailed guide on Docker, reverse proxies, systemd, and remote SSH access.
 
 ## Project Structure
 
@@ -184,8 +258,9 @@ kanban/
 │       ├── components/     # KanbanBoard, KanbanCard, BoardSelector, etc.
 │       └── composables/    # useBoard, useRecurring, useNotifications, useDarkMode
 ├── server/                 # Express 5 production server
-│   └── src/index.js        # createApp() factory + CLI startup
-├── boards/                 # Board data (JSON files, gitignored)
+│   └── src/                # createApp(), auth, DB API, SQLite migration
+├── boards/                 # Legacy board data (JSON files, gitignored)
+├── data/                   # Runtime SQLite DB files (gitignored)
 ├── docs/                   # User documentation + OpenAPI spec
 └── .github/workflows/      # CI, Lint, Commitlint, Security Audit
 ```
@@ -209,7 +284,7 @@ npm run build               # Build Vue SPA for production
 
 - **CLI**: Node.js, Commander.js, chalk, Zod, @inquirer/prompts, nanoid, date-fns
 - **Web**: Vue 3, Vite, PrimeVue v4 (Aura theme), sortablejs-vue3
-- **Server**: Express 5, Node.js HTTPS
+- **Server**: Express 5, Node.js HTTPS, Node SQLite, HTTP-only cookie sessions
 - **Testing**: Vitest (monorepo workspace), @vue/test-utils, happy-dom
 - **Linting**: ESLint 9 (flat config), Stylelint (logical CSS), Commitlint
 

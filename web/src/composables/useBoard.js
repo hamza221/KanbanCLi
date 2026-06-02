@@ -1,129 +1,185 @@
 import { ref } from 'vue';
 
 /**
- * Composable for loading and saving board data via the Vite dev API.
+ * Composable for loading and saving account-scoped board data.
  */
 export function useBoard() {
   const boards = ref([]);
+  const boardSummaries = ref([]);
   const activeBoard = ref(null);
+  const activeBoardId = ref(null);
   const boardData = ref(null);
   const boardSettings = ref({ githubStatusMap: {} });
   const loading = ref(false);
 
+  function resetBoards() {
+    boards.value = [];
+    boardSummaries.value = [];
+    activeBoard.value = null;
+    activeBoardId.value = null;
+    boardData.value = null;
+    boardSettings.value = { githubStatusMap: {} };
+  }
+
+  function boardIdFor(identifier) {
+    const summary = boardSummaries.value.find(
+      (board) => board.id === identifier || board.name === identifier
+    );
+    return summary?.id || (identifier === activeBoard.value ? activeBoardId.value : identifier);
+  }
+
+  async function api(path, options = {}) {
+    const res = await fetch(path, {
+      credentials: 'same-origin',
+      ...options,
+      headers: {
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {}),
+      },
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Request failed: ${res.status}`);
+    }
+
+    return res.status === 204 ? null : res.json();
+  }
+
+  function setActiveBoard(payload) {
+    boardData.value = payload;
+    activeBoard.value = payload.name;
+    activeBoardId.value = payload.id;
+    boardSettings.value = payload.settings || { githubStatusMap: {} };
+  }
+
   async function loadBoards() {
     try {
-      const res = await fetch('/api/boards');
-      if (!res.ok) throw new Error(`Failed to fetch boards: ${res.status}`);
-      boards.value = await res.json();
+      boardSummaries.value = await api('/api/account/boards');
+      boards.value = boardSummaries.value.map((board) => board.name);
     } catch (err) {
       console.error('Failed to load boards:', err);
+      boardSummaries.value = [];
       boards.value = [];
+      throw err;
     }
   }
 
-  async function loadBoard(name) {
+  async function loadBoard(identifier) {
     loading.value = true;
     try {
-      const res = await fetch(`/api/board?name=${encodeURIComponent(name)}`);
-      if (!res.ok) throw new Error(`Failed to fetch board: ${res.status}`);
-      boardData.value = await res.json();
-      activeBoard.value = name;
+      const boardId = boardIdFor(identifier);
+      if (!boardId) throw new Error('Board not found');
+      const payload = await api(`/api/account/boards/${encodeURIComponent(boardId)}`);
+      setActiveBoard(payload);
     } catch (err) {
-      console.error(`Failed to load board "${name}":`, err);
+      console.error(`Failed to load board "${identifier}":`, err);
       boardData.value = null;
+      throw err;
     } finally {
       loading.value = false;
     }
   }
 
-  async function saveCards(name, cards) {
-    try {
-      const res = await fetch(`/api/board?name=${encodeURIComponent(name)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cards }),
-      });
-      if (!res.ok) throw new Error(`Failed to save cards: ${res.status}`);
-    } catch (err) {
-      console.error(`Failed to save cards for board "${name}":`, err);
-    }
+  async function saveCards(identifier, cards) {
+    const boardId = boardIdFor(identifier);
+    if (!boardId) throw new Error('No active board selected');
+
+    const payload = await api(`/api/account/boards/${encodeURIComponent(boardId)}/cards`, {
+      method: 'PUT',
+      body: JSON.stringify({ cards }),
+    });
+    setActiveBoard(payload.board);
   }
 
   async function createBoard(name, columns) {
-    try {
-      const res = await fetch('/api/boards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, columns }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Failed to create board: ${res.status}`);
-      }
-      await loadBoards();
-      await loadBoard(name);
-      return true;
-    } catch (err) {
-      console.error('Failed to create board:', err);
-      throw err;
-    }
+    const payload = await api('/api/account/boards', {
+      method: 'POST',
+      body: JSON.stringify({ name, columns }),
+    });
+    await loadBoards();
+    setActiveBoard(payload);
+    return true;
   }
 
-  async function refreshGitHubMeta(name) {
-    try {
-      const res = await fetch('/api/github-refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ boardName: name }),
-      });
-      if (!res.ok) return 0;
-      const data = await res.json();
-      // Reload the board to pick up refreshed metadata
-      if (data.updated > 0) {
-        await loadBoard(name);
-      }
-      return data.updated || 0;
-    } catch (err) {
-      console.error('GitHub refresh failed:', err);
-      return 0;
-    }
+  async function createCard(card) {
+    if (!activeBoardId.value) throw new Error('No active board selected');
+    const created = await api(`/api/account/boards/${encodeURIComponent(activeBoardId.value)}/cards`, {
+      method: 'POST',
+      body: JSON.stringify(card),
+    });
+    await loadBoard(activeBoardId.value);
+    return created;
   }
 
-  async function loadSettings(name) {
+  async function updateCard(card) {
+    await api(`/api/account/cards/${encodeURIComponent(card.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(card),
+    });
+    await loadBoard(activeBoardId.value);
+  }
+
+  async function deleteCard(card) {
+    await api(`/api/account/cards/${encodeURIComponent(card.id)}`, {
+      method: 'DELETE',
+    });
+    await loadBoard(activeBoardId.value);
+  }
+
+  async function refreshGitHubMeta(identifier = activeBoardId.value) {
+    const boardId = boardIdFor(identifier);
+    if (!boardId) return 0;
+
+    const payload = await api(`/api/account/boards/${encodeURIComponent(boardId)}/github-refresh`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    setActiveBoard(payload.board);
+    return payload.updated || 0;
+  }
+
+  async function loadSettings(identifier) {
+    const boardId = boardIdFor(identifier);
+    if (!boardId) {
+      boardSettings.value = { githubStatusMap: {} };
+      return;
+    }
+
     try {
-      const res = await fetch(`/api/settings?name=${encodeURIComponent(name)}`);
-      if (!res.ok) throw new Error(`Failed to fetch settings: ${res.status}`);
-      boardSettings.value = await res.json();
+      boardSettings.value = await api(`/api/account/boards/${encodeURIComponent(boardId)}/settings`);
     } catch {
       boardSettings.value = { githubStatusMap: {} };
     }
   }
 
-  async function saveSettings(name, settings) {
-    try {
-      const res = await fetch(`/api/settings?name=${encodeURIComponent(name)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-      });
-      if (!res.ok) throw new Error(`Failed to save settings: ${res.status}`);
-      boardSettings.value = settings;
-    } catch (err) {
-      console.error(`Failed to save settings for board "${name}":`, err);
-      throw err;
-    }
+  async function saveSettings(identifier, settings) {
+    const boardId = boardIdFor(identifier);
+    if (!boardId) throw new Error('No active board selected');
+
+    await api(`/api/account/boards/${encodeURIComponent(boardId)}/settings`, {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+    boardSettings.value = settings;
   }
 
   return {
     boards,
+    boardSummaries,
     activeBoard,
+    activeBoardId,
     boardData,
     boardSettings,
     loading,
+    resetBoards,
     loadBoards,
     loadBoard,
     saveCards,
     createBoard,
+    createCard,
+    updateCard,
+    deleteCard,
     refreshGitHubMeta,
     loadSettings,
     saveSettings,

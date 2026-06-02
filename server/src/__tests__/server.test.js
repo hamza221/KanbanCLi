@@ -43,6 +43,7 @@ async function request(app, method, urlPath, body = null) {
       }
       req.end();
     });
+    server.on('error', reject);
   });
 }
 

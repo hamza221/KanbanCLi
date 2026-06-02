@@ -1,141 +1,190 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useBoard } from '../useBoard.js';
 
+function jsonResponse(body, ok = true, status = 200) {
+  return Promise.resolve({
+    ok,
+    status,
+    json: () => Promise.resolve(body),
+  });
+}
+
+const boardPayload = {
+  id: 'board-1',
+  name: 'default',
+  config: { name: 'default', columns: ['To Do', 'Done'], customFields: [] },
+  cards: [],
+  settings: { githubStatusMap: {} },
+};
+
 describe('useBoard', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
   it('returns initial state', () => {
-    const { boards, activeBoard, boardData, loading } = useBoard();
+    const { boards, activeBoard, activeBoardId, boardData, loading } = useBoard();
     expect(boards.value).toEqual([]);
     expect(activeBoard.value).toBe(null);
+    expect(activeBoardId.value).toBe(null);
     expect(boardData.value).toBe(null);
     expect(loading.value).toBe(false);
   });
 
-  it('loadBoards populates boards list', async () => {
+  it('loadBoards populates board names from account boards', async () => {
     vi.stubGlobal('fetch', vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(['default', 'work']),
-      })
+      jsonResponse([
+        { id: 'board-1', name: 'default' },
+        { id: 'board-2', name: 'work' },
+      ])
     ));
 
-    const { boards, loadBoards } = useBoard();
+    const { boards, boardSummaries, loadBoards } = useBoard();
     await loadBoards();
+
     expect(boards.value).toEqual(['default', 'work']);
-    expect(fetch).toHaveBeenCalledWith('/api/boards');
+    expect(boardSummaries.value[0].id).toBe('board-1');
+    expect(fetch).toHaveBeenCalledWith('/api/account/boards', expect.objectContaining({
+      credentials: 'same-origin',
+    }));
   });
 
-  it('loadBoards handles fetch failure gracefully', async () => {
+  it('loadBoards clears state and throws on fetch failure', async () => {
     vi.stubGlobal('fetch', vi.fn(() =>
-      Promise.resolve({ ok: false, status: 500 })
+      jsonResponse({ error: 'Authentication required' }, false, 401)
     ));
 
     const { boards, loadBoards } = useBoard();
-    await loadBoards();
+    await expect(loadBoards()).rejects.toThrow('Authentication required');
     expect(boards.value).toEqual([]);
   });
 
-  it('loadBoard fetches board data', async () => {
-    const mockData = {
-      config: { name: 'test', columns: ['A', 'B'] },
-      cards: [{ id: '1', title: 'Card' }],
-    };
+  it('loadBoard fetches board data by board name', async () => {
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      if (url === '/api/account/boards') {
+        return jsonResponse([{ id: 'board-1', name: 'default' }]);
+      }
+      if (url === '/api/account/boards/board-1') {
+        return jsonResponse(boardPayload);
+      }
+      return jsonResponse({}, false, 404);
+    }));
 
-    vi.stubGlobal('fetch', vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockData),
-      })
-    ));
+    const { boardData, activeBoard, activeBoardId, loading, loadBoards, loadBoard } = useBoard();
+    await loadBoards();
+    await loadBoard('default');
 
-    const { boardData, activeBoard, loading, loadBoard } = useBoard();
-    await loadBoard('test');
-
-    expect(boardData.value).toEqual(mockData);
-    expect(activeBoard.value).toBe('test');
+    expect(boardData.value).toEqual(boardPayload);
+    expect(activeBoard.value).toBe('default');
+    expect(activeBoardId.value).toBe('board-1');
     expect(loading.value).toBe(false);
-    expect(fetch).toHaveBeenCalledWith('/api/board?name=test');
   });
 
-  it('loadBoard handles failure gracefully', async () => {
+  it('saveCards sends a board-scoped PUT request', async () => {
+    const cards = [{ id: '1', title: 'Test', status: 'To Do' }];
     vi.stubGlobal('fetch', vi.fn(() =>
-      Promise.resolve({ ok: false, status: 404 })
+      jsonResponse({ ok: true, board: { ...boardPayload, cards } })
     ));
 
-    const { boardData, loadBoard } = useBoard();
-    await loadBoard('nonexistent');
-    expect(boardData.value).toBe(null);
-  });
-
-  it('saveCards sends PUT request', async () => {
-    vi.stubGlobal('fetch', vi.fn(() =>
-      Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) })
-    ));
-
-    const { saveCards } = useBoard();
-    const cards = [{ id: '1', title: 'Test' }];
-    await saveCards('test', cards);
+    const { boardData, saveCards } = useBoard();
+    await saveCards('board-1', cards);
 
     expect(fetch).toHaveBeenCalledWith(
-      '/api/board?name=test',
+      '/api/account/boards/board-1/cards',
       expect.objectContaining({
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ cards }),
       })
     );
+    expect(boardData.value.cards).toEqual(cards);
   });
 
-  it('createBoard sends POST and reloads boards', async () => {
-    const calls = [];
+  it('createBoard sends POST and reloads board summaries', async () => {
     vi.stubGlobal('fetch', vi.fn((url, opts) => {
-      calls.push({ url, method: opts?.method || 'GET' });
-      if (url === '/api/boards' && opts?.method === 'POST') {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ ok: true, config: { name: 'new-board', columns: ['A', 'B'] } }),
-        });
+      if (url === '/api/account/boards' && opts?.method === 'POST') {
+        return jsonResponse({ ...boardPayload, id: 'board-2', name: 'new-board', config: { ...boardPayload.config, name: 'new-board' } }, true, 201);
       }
-      if (url === '/api/boards') {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(['default', 'new-board']),
-        });
+      if (url === '/api/account/boards') {
+        return jsonResponse([{ id: 'board-2', name: 'new-board' }]);
       }
-      if (url === '/api/board?name=new-board') {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            config: { name: 'new-board', columns: ['A', 'B'] },
-            cards: [],
-          }),
-        });
-      }
-      return Promise.resolve({ ok: false, status: 404 });
+      return jsonResponse({}, false, 404);
     }));
 
-    const { boards, activeBoard, boardData, createBoard } = useBoard();
-    await createBoard('new-board', ['A', 'B']);
+    const { boards, activeBoard, activeBoardId, boardData, createBoard } = useBoard();
+    await createBoard('new-board', ['To Do', 'Done']);
 
-    expect(calls[0]).toEqual({ url: '/api/boards', method: 'POST' });
-    expect(boards.value).toContain('new-board');
+    expect(boards.value).toEqual(['new-board']);
     expect(activeBoard.value).toBe('new-board');
-    expect(boardData.value).not.toBe(null);
+    expect(activeBoardId.value).toBe('board-2');
+    expect(boardData.value.id).toBe('board-2');
   });
 
-  it('createBoard throws on server error', async () => {
-    vi.stubGlobal('fetch', vi.fn(() =>
-      Promise.resolve({
-        ok: false,
-        status: 409,
-        json: () => Promise.resolve({ error: 'Board already exists' }),
-      })
-    ));
+  it('createCard posts to the active board', async () => {
+    vi.stubGlobal('fetch', vi.fn((url, opts) => {
+      if (url === '/api/account/boards/board-1/cards' && opts?.method === 'POST') {
+        return jsonResponse({ id: 'card-1', title: 'Card', status: 'To Do' }, true, 201);
+      }
+      if (url === '/api/account/boards/board-1') {
+        return jsonResponse({ ...boardPayload, cards: [{ id: 'card-1', title: 'Card', status: 'To Do' }] });
+      }
+      return jsonResponse({}, false, 404);
+    }));
 
-    const { createBoard } = useBoard();
-    await expect(createBoard('existing', ['A'])).rejects.toThrow('Board already exists');
+    const { createBoard, createCard, boardData } = useBoard();
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: () => Promise.resolve(boardPayload),
+    });
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve([{ id: 'board-1', name: 'default' }]),
+    });
+
+    await createBoard('default', ['To Do']);
+    await createCard({ title: 'Card', status: 'To Do' });
+
+    expect(boardData.value.cards[0].title).toBe('Card');
+  });
+
+  it('refreshGitHubMeta posts to the account board refresh endpoint', async () => {
+    const refreshedBoard = {
+      ...boardPayload,
+      cards: [{
+        id: 'card-1',
+        title: 'Card',
+        status: 'Done',
+        link: 'https://github.com/example/repo/issues/1',
+        linkMeta: { title: 'GitHub issue' },
+      }],
+    };
+
+    vi.stubGlobal('fetch', vi.fn((url, opts) => {
+      if (url === '/api/account/boards/board-1' && !opts?.method) {
+        return jsonResponse(boardPayload);
+      }
+      if (url === '/api/account/boards/board-1/github-refresh') {
+        return jsonResponse({ ok: true, updated: 1, moved: 1, failed: 0, board: refreshedBoard });
+      }
+      return jsonResponse({}, false, 404);
+    }));
+
+    const { boardData, loadBoard, refreshGitHubMeta } = useBoard();
+    await loadBoard('board-1');
+    const updated = await refreshGitHubMeta('board-1');
+
+    expect(updated).toBe(1);
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/account/boards/board-1/github-refresh',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'same-origin',
+        body: JSON.stringify({}),
+      })
+    );
+    expect(boardData.value.cards[0].status).toBe('Done');
+    expect(boardData.value.cards[0].linkMeta.title).toBe('GitHub issue');
   });
 });

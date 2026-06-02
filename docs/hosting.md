@@ -7,9 +7,10 @@ This guide covers how to deploy CLIkanban as a self-hosted web application.
 CLIkanban ships with an Express 5 production server that:
 
 - Serves the built Vue SPA from `web/dist/`
-- Provides the JSON API (same endpoints as the Vite dev middleware)
+- Provides authenticated account APIs and legacy JSON board APIs
 - Supports HTTP and HTTPS
-- Stores data as JSON files on disk (in `boards/`)
+- Stores account, session, board, column, card, and settings data in SQL
+- Keeps legacy CLI board data as JSON files on disk in `boards/`
 
 ## Quick Setup
 
@@ -26,7 +27,54 @@ npm run build
 npm run start          # HTTP on port 3000
 ```
 
-Visit `http://localhost:3000` to access the web UI. Interactive API documentation is available at `/api/docs`.
+Visit `http://localhost:3000` to access the web UI. The default database path is `data/kanban.db`; override it with `KANBAN_DB_PATH`.
+
+```bash
+KANBAN_DB_PATH=./data/kanban.db npm run start
+```
+
+Interactive API documentation is available at `/api/docs`.
+
+## GitHub OAuth
+
+For local login, create a GitHub OAuth App with:
+
+- Homepage URL: `http://localhost:3000`
+- Authorization callback URL: `http://localhost:3000/api/auth/github/callback`
+
+Start the backend with:
+
+```bash
+GITHUB_CLIENT_ID=your_client_id \
+GITHUB_CLIENT_SECRET=your_client_secret \
+GITHUB_OAUTH_REDIRECT_URL=http://localhost:3000/api/auth/github/callback \
+KANBAN_DB_PATH=./data/kanban.db \
+npm run start
+```
+
+For production, set the callback to your public URL, for example `https://kanban.example.com/api/auth/github/callback`, and use the same value for `GITHUB_OAUTH_REDIRECT_URL`. A mismatch between GitHub's callback URL and the app's `redirect_uri` will make GitHub reject the token exchange.
+
+GitHub-authenticated users display their GitHub avatar. Email/password users keep the initials avatar. If GitHub does not expose an email address or rejects the private email lookup, CLIkanban stores a stable GitHub noreply-style email for that account.
+
+GitHub issue/PR metadata refresh uses the public GitHub REST API by default. Set `GITHUB_TOKEN` on the server if cards point to private repositories or you need higher API rate limits.
+
+## Local Frontend Development
+
+The authenticated frontend expects the Express backend on `http://localhost:3000`.
+
+Run the backend in one terminal:
+
+```bash
+KANBAN_DB_PATH=./data/kanban.db npm run start
+```
+
+Run Vite in another terminal:
+
+```bash
+npm run dev
+```
+
+The Vite dev server proxies authenticated `/api/auth`, `/api/me`, and `/api/account` requests to `http://localhost:3000`.
 
 ## Server Options
 
@@ -80,6 +128,10 @@ ExecStart=/usr/bin/node server/src/index.js --port 3000
 Restart=on-failure
 RestartSec=5
 Environment=NODE_ENV=production
+Environment=KANBAN_DB_PATH=/opt/clikanban/data/kanban.db
+Environment=GITHUB_CLIENT_ID=your_client_id
+Environment=GITHUB_CLIENT_SECRET=your_client_secret
+Environment=GITHUB_OAUTH_REDIRECT_URL=https://kanban.example.com/api/auth/github/callback
 
 [Install]
 WantedBy=multi-user.target
@@ -204,7 +256,7 @@ CLIkanban includes a production-ready `Dockerfile` and `docker-compose.yml` for 
 docker compose up -d
 ```
 
-That's it. The web UI is available at `http://localhost:3000`. Board data is persisted in a named Docker volume.
+That's it. The web UI is available at `http://localhost:3000`. Account database state is persisted in the `data` volume; legacy board JSON is persisted in the `boards` volume.
 
 To use a different port:
 
@@ -231,6 +283,7 @@ docker run -d \
   --name clikanban \
   -p 3000:3000 \
   -v clikanban-boards:/app/boards \
+  -v clikanban-data:/app/data \
   --restart unless-stopped \
   clikanban
 ```
@@ -238,17 +291,22 @@ docker run -d \
 ### Custom Port
 
 ```bash
-docker run -d -p 8080:3000 -v clikanban-boards:/app/boards clikanban
+docker run -d \
+  -p 8080:3000 \
+  -v clikanban-boards:/app/boards \
+  -v clikanban-data:/app/data \
+  clikanban
 ```
 
 ### Bind Mount (Instead of Named Volume)
 
-To store board data in a host directory (useful for easy backups):
+To store runtime data in host directories (useful for easy backups):
 
 ```bash
 docker run -d \
   -p 3000:3000 \
   -v /path/to/your/boards:/app/boards \
+  -v /path/to/your/data:/app/data \
   clikanban
 ```
 
@@ -262,6 +320,7 @@ services:
       - "3000:3000"
     volumes:
       - ./my-boards:/app/boards
+      - ./my-data:/app/data
     restart: unless-stopped
 ```
 
@@ -289,6 +348,7 @@ services:
     restart: unless-stopped
     volumes:
       - boards:/app/boards
+      - data:/app/data
     expose:
       - "3000"
 
@@ -305,6 +365,7 @@ services:
 
 volumes:
   boards:
+  data:
   certs:
 ```
 
@@ -327,22 +388,24 @@ The final image runs as a non-root `node` user and is based on `node:22-alpine` 
 
 ## Data Backup
 
-Board data is stored as plain JSON files in `boards/`. Back up this directory regularly:
+Account data is stored in SQLite database files under `data/` by default. Legacy CLI board data is stored as JSON files under `boards/`. Back up both directories regularly:
 
 ```bash
 # Simple backup
-tar -czf clikanban-backup-$(date +%Y%m%d).tar.gz boards/
+tar -czf clikanban-backup-$(date +%Y%m%d).tar.gz data/ boards/
 
 # Or rsync to a remote location
-rsync -avz boards/ backup-server:/backups/clikanban/
+rsync -avz data/ boards/ backup-server:/backups/clikanban/
 ```
+
+If the server is running while you back up SQLite files, include the `*.db`, `*.db-wal`, and `*.db-shm` files together.
 
 ## Security Considerations
 
-- **Do not expose the API to the public internet without authentication.** CLIkanban has no built-in authentication. Use a reverse proxy with basic auth, VPN, or SSH tunnels.
+- **Use HTTPS in production.** Session cookies are HTTP-only; set `COOKIE_SECURE=true` only when the app is served over HTTPS.
+- **Keep database files private.** Restrict file permissions on `data/` and `boards/` to the server user only.
 - **Keep Node.js updated.** Run `npm audit` regularly (the CI workflow includes a weekly audit).
-- **Use HTTPS in production.** Either via the built-in HTTPS support or a reverse proxy with TLS.
-- **Restrict file permissions** on the `boards/` directory to the server user only.
+- **Protect legacy file APIs** if you expose them beyond trusted users. The current web UI uses authenticated account APIs, but legacy file-backed endpoints still exist for compatibility.
 
 ## Troubleshooting
 
@@ -351,6 +414,7 @@ rsync -avz boards/ backup-server:/backups/clikanban/
 - Check that `web/dist/` exists (run `npm run build` first)
 - Check the port isn't already in use: `lsof -i :3000`
 - Check Node.js version: `node --version` (requires Node 20+)
+- Check database path permissions: `KANBAN_DB_PATH=./data/kanban.db npm run start`
 
 ### HTTPS certificate errors
 
