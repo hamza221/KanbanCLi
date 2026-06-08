@@ -10,14 +10,14 @@
     "test": "vitest run --project web"
   },
   "dependencies": {
-    "date-fns": "^4.1.0",
-    "primevue": "^4.3.0",
+    "date-fns": "^4.4.0",
+    "primevue": "^4.5.5",
     "@primevue/themes": "^4.3.0",
     "primeicons": "^7.0.0",
-    "nanoid": "^5.0.0",
+    "nanoid": "^5.1.11",
     "sortablejs": "^1.15.0",
     "sortablejs-vue3": "^1.2.11",
-    "vue": "^3.5.0"
+    "vue": "^3.5.35"
   },
   "devDependencies": {
     "vite": "^6.0.0",
